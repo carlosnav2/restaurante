@@ -85,7 +85,7 @@ if ($tables_check->num_rows == 0) {
                     : "<li><em>No se encontraron tablas en esta base de datos</em></li>"
                 ) . "
                 </ul>
-            </div>"
+            </div>
             <div class='info' style='margin-top: 1rem;'>
                 <strong>💡 Tip:</strong> Si ya configuraste las variables de entorno en Railway, verifica que:
                 <ul style='margin-top: 0.5rem;'>
