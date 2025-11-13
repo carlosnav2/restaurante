@@ -66,6 +66,27 @@ if ($tables_check->num_rows == 0) {
                 </ol>
             </div>
             <p><strong>Base de datos actual:</strong> " . htmlspecialchars(DB_NAME) . "</p>
+            <p><strong>Host:</strong> " . htmlspecialchars(DB_HOST) . "</p>
+            <p><strong>Puerto:</strong> " . htmlspecialchars(DB_PORT) . "</p>
+            <p><strong>Usuario:</strong> " . htmlspecialchars(DB_USER) . "</p>
+            <div class='info' style='margin-top: 1rem;'>
+                <strong>💡 Tip:</strong> Si ya configuraste las variables de entorno en Railway, verifica que:
+                <ul style='margin-top: 0.5rem;'>
+                    <li>Las variables estén en el servicio PHP (no solo en MySQL)</li>
+                    <li>Los nombres sean exactos: <code>DB_HOST</code>, <code>DB_USER</code>, <code>DB_PASS</code>, <code>DB_NAME</code>, <code>DB_PORT</code></li>
+                    <li>O usa las variables automáticas de Railway: <code>MYSQLHOST</code>, <code>MYSQLUSER</code>, etc.</li>
+                </ul>
+            </div>
+            <div class='info' style='margin-top: 1rem; background: #fef3c7; border-color: #f59e0b; color: #92400e;'>
+                <strong>📋 Para ejecutar el SQL en Railway:</strong>
+                <ol style='margin-top: 0.5rem;'>
+                    <li>Ve a tu servicio MySQL en Railway</li>
+                    <li>Abre la pestaña <strong>"Data"</strong> o <strong>"Query"</strong></li>
+                    <li>Copia el contenido del archivo <code>database.sql</code></li>
+                    <li>Pégalo y ejecútalo en el editor SQL</li>
+                    <li>O importa tu dump completo si ya lo tienes</li>
+                </ol>
+            </div>
         </div>
     </body>
     </html>
