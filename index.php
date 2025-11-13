@@ -197,6 +197,28 @@ function icon($name, $size = 20) {
 $action = $_GET['action'] ?? '';
 $view = $_GET['view'] ?? 'pos';
 
+// CREAR/ACTUALIZAR USUARIO ADMIN (solo si no existe o para resetear)
+if ($action === 'create_admin' && $_SERVER['REQUEST_METHOD'] === 'POST') {
+    $username = 'admin';
+    $password = $_POST['password'] ?? 'Admin123!';
+    $nombre = 'Administrador';
+    $rol = 'admin';
+    
+    $password_hash = password_hash($password, PASSWORD_DEFAULT);
+    
+    $stmt = $conn->prepare("INSERT INTO usuarios (username, password, nombre, rol, activo) VALUES (?, ?, ?, ?, 1) ON DUPLICATE KEY UPDATE password = ?, nombre = ?, rol = ?, activo = 1");
+    $stmt->bind_param("ssssssss", $username, $password_hash, $nombre, $rol, $password_hash, $nombre, $rol);
+    
+    if ($stmt->execute()) {
+        $_SESSION['admin_created'] = 'Usuario administrador creado/actualizado exitosamente';
+    } else {
+        $_SESSION['admin_error'] = 'Error: ' . $stmt->error;
+    }
+    $stmt->close();
+    header("Location: ?view=login");
+    exit;
+}
+
 // LOGIN
 if ($action === 'login' && $_SERVER['REQUEST_METHOD'] === 'POST') {
     $username = $_POST['username'] ?? '';
@@ -215,10 +237,13 @@ if ($action === 'login' && $_SERVER['REQUEST_METHOD'] === 'POST') {
             $_SESSION['login_time'] = time();
             header("Location: ?view=pos");
             exit;
+        } else {
+            $_SESSION['login_error'] = 'Contraseña incorrecta';
         }
+    } else {
+        $_SESSION['login_error'] = 'Usuario no encontrado o inactivo';
     }
     
-    $_SESSION['login_error'] = 'Usuario o contraseña incorrectos';
     header("Location: ?view=login");
     exit;
 }
@@ -587,8 +612,29 @@ if ($action === 'print' && isset($_GET['order_id'])) {
 // ====================================================================
 
 function renderLoginView() {
+    global $conn;
     $error = $_SESSION['login_error'] ?? null;
-    unset($_SESSION['login_error']);
+    $admin_created = $_SESSION['admin_created'] ?? null;
+    $admin_error = $_SESSION['admin_error'] ?? null;
+    unset($_SESSION['login_error'], $_SESSION['admin_created'], $_SESSION['admin_error']);
+    
+    // Verificar si existe el usuario admin
+    $admin_exists = false;
+    $users_count = 0;
+    try {
+        $check = $conn->query("SELECT COUNT(*) as count FROM usuarios");
+        if ($check) {
+            $row = $check->fetch_assoc();
+            $users_count = $row['count'] ?? 0;
+        }
+        $admin_check = $conn->query("SELECT COUNT(*) as count FROM usuarios WHERE username = 'admin'");
+        if ($admin_check) {
+            $admin_row = $admin_check->fetch_assoc();
+            $admin_exists = ($admin_row['count'] ?? 0) > 0;
+        }
+    } catch (Exception $e) {
+        // Ignorar errores
+    }
     ?>
     <div style="display: flex; justify-content: center; align-items: center; min-height: 100vh; background: linear-gradient(135deg, #047857 0%, #059669 100%);">
         <div style="background-color: white; border-radius: 1rem; box-shadow: 0 20px 25px -5px rgba(0, 0, 0, 0.1), 0 10px 10px -5px rgba(0, 0, 0, 0.04); padding: 3rem; width: 100%; max-width: 400px;">
@@ -602,6 +648,33 @@ function renderLoginView() {
                 <div style="background-color: #fee2e2; border: 1px solid #ef4444; color: #991b1b; padding: 0.75rem; border-radius: 0.5rem; margin-bottom: 1.5rem; display: flex; align-items: center; gap: 0.5rem;">
                     <span style="font-size: 1.25rem;">⚠️</span>
                     <span style="font-size: 0.875rem;"><?= htmlspecialchars($error) ?></span>
+                </div>
+            <?php endif; ?>
+            
+            <?php if ($admin_created): ?>
+                <div style="background-color: #d1fae5; border: 1px solid #10b981; color: #065f46; padding: 0.75rem; border-radius: 0.5rem; margin-bottom: 1.5rem; display: flex; align-items: center; gap: 0.5rem;">
+                    <span style="font-size: 1.25rem;">✅</span>
+                    <span style="font-size: 0.875rem;"><?= htmlspecialchars($admin_created) ?></span>
+                </div>
+            <?php endif; ?>
+            
+            <?php if ($admin_error): ?>
+                <div style="background-color: #fee2e2; border: 1px solid #ef4444; color: #991b1b; padding: 0.75rem; border-radius: 0.5rem; margin-bottom: 1.5rem;">
+                    <span style="font-size: 0.875rem;"><?= htmlspecialchars($admin_error) ?></span>
+                </div>
+            <?php endif; ?>
+            
+            <?php if (!$admin_exists && $users_count == 0): ?>
+                <div style="background-color: #fef3c7; border: 1px solid #f59e0b; color: #92400e; padding: 1rem; border-radius: 0.5rem; margin-bottom: 1.5rem;">
+                    <div style="font-weight: 600; margin-bottom: 0.5rem;">⚠️ No hay usuarios en la base de datos</div>
+                    <p style="font-size: 0.875rem; margin-bottom: 0.75rem;">Crea el usuario administrador con la contraseña por defecto:</p>
+                    <form method="POST" action="?action=create_admin">
+                        <input type="hidden" name="password" value="Admin123!">
+                        <button type="submit" style="width: 100%; background-color: #f59e0b; color: white; padding: 0.75rem; border: none; border-radius: 0.5rem; font-weight: 600; cursor: pointer; font-size: 0.875rem;">
+                            ➕ Crear Usuario Admin (Admin123!)
+                        </button>
+                    </form>
+                    <p style="font-size: 0.75rem; margin-top: 0.5rem; color: #78350f;">Usuario: <strong>admin</strong> | Contraseña: <strong>Admin123!</strong></p>
                 </div>
             <?php endif; ?>
 
