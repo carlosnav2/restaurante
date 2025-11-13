@@ -1,8 +1,10 @@
-# Configuración para Nixpacks (usado por Railway)
+# Configuración mínima para PHP
 [phases.setup]
 nixPkgs = ["php82", "php82Extensions.mysqli"]
 
-# No hay dependencias que instalar (composer.json fue eliminado)
+# No instalar dependencias - proyecto PHP puro
+[phases.install]
+cmds = []
 
 [start]
 cmd = "php -S 0.0.0.0:$PORT"
