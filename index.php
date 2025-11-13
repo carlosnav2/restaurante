@@ -1,7 +1,4 @@
 <?php
-// ====================================================================
-// SISTEMA DE PEDIDOS COMPLETO CON BASE DE DATOS
-// ====================================================================
 session_start();
 
 // --- VERIFICAR SI ESTÁ LOGUEADO ---
