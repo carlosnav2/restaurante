@@ -2,8 +2,9 @@
 [phases.setup]
 nixPkgs = ["php82", "php82Extensions.mysqli"]
 
-[phases.install]
-cmds = ["composer install --no-dev --optimize-autoloader"]
+# No hay dependencias que instalar, así que omitimos la fase install
+# [phases.install]
+# cmds = ["composer install --no-dev --optimize-autoloader"]
 
 [start]
 cmd = "php -S 0.0.0.0:$PORT"
