@@ -168,7 +168,6 @@ El sistema incluye códigos de descuento de ejemplo:
 restaurante/
 ├── index.php          # Archivo principal de la aplicación
 ├── database.sql       # Script SQL para crear las tablas (solo estructura)
-├── composer.json      # Dependencias PHP
 ├── Procfile          # Comando de inicio para Railway
 ├── railway.json      # Configuración de Railway
 ├── nixpacks.toml     # Configuración del builder

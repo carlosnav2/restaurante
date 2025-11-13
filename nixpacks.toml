@@ -1,10 +1,8 @@
 # Configuración para Nixpacks (usado por Railway)
 [phases.setup]
-nixPkgs = ["php82", "php82Extensions.mysqli", "composer"]
+nixPkgs = ["php82", "php82Extensions.mysqli"]
 
-# Instalar dependencias (aunque no hay dependencias reales, composer.json existe)
-[phases.install]
-cmds = ["composer install --no-dev --optimize-autoloader --ignore-platform-reqs || true"]
+# No hay dependencias que instalar (composer.json fue eliminado)
 
 [start]
 cmd = "php -S 0.0.0.0:$PORT"
