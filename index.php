@@ -12,13 +12,23 @@ $userName = $_SESSION['user_name'] ?? null;
 // --- CONFIGURACIÓN DE BASE DE DATOS ---
 // Usar variables de entorno si están disponibles (Docker/Railway), sino usar valores por defecto
 // Railway proporciona: MYSQLHOST, MYSQLUSER, MYSQLPASSWORD, MYSQLDATABASE
-define('DB_HOST', getenv('DB_HOST') ?: getenv('MYSQLHOST') ?: 'localhost');
+$db_host = getenv('DB_HOST') ?: getenv('MYSQLHOST') ?: 'localhost';
+// Convertir 'localhost' a '127.0.0.1' para forzar TCP/IP en lugar de socket Unix
+if ($db_host === 'localhost') {
+    $db_host = '127.0.0.1';
+}
+define('DB_HOST', $db_host);
 define('DB_USER', getenv('DB_USER') ?: getenv('MYSQLUSER') ?: 'root');
 define('DB_PASS', getenv('DB_PASS') ?: getenv('MYSQLPASSWORD') ?: '');
 define('DB_NAME', getenv('DB_NAME') ?: getenv('MYSQLDATABASE') ?: 'restaurante_db');
+define('DB_PORT', getenv('DB_PORT') ?: getenv('MYSQLPORT') ?: 3306);
 
-// Crear conexión
-$conn = new mysqli(DB_HOST, DB_USER, DB_PASS);
+// Crear conexión con manejo de errores mejorado
+$conn = @new mysqli(DB_HOST, DB_USER, DB_PASS, '', DB_PORT);
+if ($conn->connect_error) {
+    die("Error de conexión a la base de datos: " . $conn->connect_error . 
+        " (Host: " . DB_HOST . ", Puerto: " . DB_PORT . ")");
+}
 
 // Crear base de datos si no existe
 if (!$conn->query("CREATE DATABASE IF NOT EXISTS " . DB_NAME)) {
