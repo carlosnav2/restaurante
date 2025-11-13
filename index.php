@@ -31,6 +31,12 @@ $conn->set_charset("utf8mb4");
 
 // Verificar que las tablas existan
 $tables_check = $conn->query("SHOW TABLES LIKE 'usuarios'");
+$all_tables = $conn->query("SHOW TABLES");
+$existing_tables = [];
+while ($row = $all_tables->fetch_array()) {
+    $existing_tables[] = $row[0];
+}
+
 if ($tables_check->num_rows == 0) {
     die("
     <!DOCTYPE html>
@@ -69,6 +75,17 @@ if ($tables_check->num_rows == 0) {
             <p><strong>Host:</strong> " . htmlspecialchars(DB_HOST) . "</p>
             <p><strong>Puerto:</strong> " . htmlspecialchars(DB_PORT) . "</p>
             <p><strong>Usuario:</strong> " . htmlspecialchars(DB_USER) . "</p>
+            <div class='info' style='margin-top: 1rem; background: #ecfdf5; border-color: #10b981; color: #065f46;'>
+                <strong>📊 Tablas existentes en la base de datos:</strong>
+                <ul style='margin-top: 0.5rem;'>" . 
+                (count($existing_tables) > 0 
+                    ? implode('', array_map(function($table) {
+                        return "<li><code>" . htmlspecialchars($table) . "</code></li>";
+                    }, $existing_tables))
+                    : "<li><em>No se encontraron tablas en esta base de datos</em></li>"
+                ) . "
+                </ul>
+            </div>"
             <div class='info' style='margin-top: 1rem;'>
                 <strong>💡 Tip:</strong> Si ya configuraste las variables de entorno en Railway, verifica que:
                 <ul style='margin-top: 0.5rem;'>

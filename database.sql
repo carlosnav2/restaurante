@@ -54,8 +54,18 @@ CREATE TABLE IF NOT EXISTS descuentos (
     activo TINYINT(1) DEFAULT 1
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
 
--- NOTA: Los usuarios se importan desde tu dump de base de datos
--- Asegúrate de que tu dump incluya la tabla usuarios con los datos necesarios
+-- Crear usuario administrador por defecto
+-- Usuario: admin
+-- Contraseña: Admin123!
+INSERT INTO usuarios (username, password, nombre, rol) VALUES 
+('admin', '$2y$10$N9qo8uLOickgx2ZMRZoMyeIjZAgcfl7p92ldGxad68LJZdL17lhWy', 'Administrador', 'admin')
+ON DUPLICATE KEY UPDATE username=username;
+
+-- NOTA: La contraseña por defecto es: Admin123!
+-- ⚠️ IMPORTANTE: Cambia esta contraseña después del primer inicio en producción
+-- 
+-- Para generar un nuevo hash de contraseña, ejecuta en PHP:
+-- php -r "echo password_hash('tu_nueva_contraseña', PASSWORD_DEFAULT);"
 
 -- NOTA: Los productos y descuentos se importan desde tu dump de base de datos
 -- Si necesitas datos de ejemplo, puedes descomentar las siguientes líneas:
