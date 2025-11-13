@@ -10,104 +10,153 @@ $userRole = $_SESSION['user_role'] ?? null;
 $userName = $_SESSION['user_name'] ?? null;
 
 // --- CONFIGURACIÓN DE BASE DE DATOS ---
-// Usar variables de entorno para producción (Railway) o valores por defecto para desarrollo local
-// Railway usa MYSQLHOST, MYSQLUSER, MYSQLPASSWORD, MYSQLDATABASE, MYSQLPORT por defecto
-define('DB_HOST', getenv('MYSQLHOST') ?: getenv('DB_HOST') ?: 'localhost');
-define('DB_USER', getenv('MYSQLUSER') ?: getenv('DB_USER') ?: 'root');
-define('DB_PASS', getenv('MYSQLPASSWORD') ?: getenv('DB_PASS') ?: '');
-define('DB_NAME', getenv('MYSQLDATABASE') ?: getenv('DB_NAME') ?: 'restaurante_db');
-define('DB_PORT', getenv('MYSQLPORT') ?: getenv('DB_PORT') ?: 3306);
+// Usar variables de entorno si están disponibles (Docker/Railway), sino usar valores por defecto
+// Railway proporciona: MYSQLHOST, MYSQLUSER, MYSQLPASSWORD, MYSQLDATABASE
+define('DB_HOST', getenv('DB_HOST') ?: getenv('MYSQLHOST') ?: 'localhost');
+define('DB_USER', getenv('DB_USER') ?: getenv('MYSQLUSER') ?: 'root');
+define('DB_PASS', getenv('DB_PASS') ?: getenv('MYSQLPASSWORD') ?: '');
+define('DB_NAME', getenv('DB_NAME') ?: getenv('MYSQLDATABASE') ?: 'restaurante_db');
 
-// Crear conexión directamente a la base de datos
-$conn = new mysqli(DB_HOST, DB_USER, DB_PASS, DB_NAME, DB_PORT);
+// Crear conexión
+$conn = new mysqli(DB_HOST, DB_USER, DB_PASS);
 
-// Verificar conexión
-if ($conn->connect_error) {
-    die("Error de conexión: " . $conn->connect_error);
+// Crear base de datos si no existe
+if (!$conn->query("CREATE DATABASE IF NOT EXISTS " . DB_NAME)) {
+    die("Error creando base de datos: " . $conn->error);
 }
 
-// Configurar charset
-$conn->set_charset("utf8mb4");
+// Seleccionar base de datos
+$conn->select_db(DB_NAME);
 
-// Verificar que las tablas existan
-$tables_check = $conn->query("SHOW TABLES LIKE 'usuarios'");
-$all_tables = $conn->query("SHOW TABLES");
-$existing_tables = [];
-while ($row = $all_tables->fetch_array()) {
-    $existing_tables[] = $row[0];
+// --- CREAR TABLAS SI NO EXISTEN ---
+$sql_tables = "
+CREATE TABLE IF NOT EXISTS usuarios (
+    id INT AUTO_INCREMENT PRIMARY KEY,
+    username VARCHAR(50) UNIQUE NOT NULL,
+    password VARCHAR(255) NOT NULL,
+    nombre VARCHAR(100) NOT NULL,
+    rol ENUM('admin', 'mesero') NOT NULL,
+    activo TINYINT(1) DEFAULT 1,
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
+
+CREATE TABLE IF NOT EXISTS pedidos (
+    id INT AUTO_INCREMENT PRIMARY KEY,
+    numero_pedido VARCHAR(20) NOT NULL,
+    total DECIMAL(10,2) NOT NULL,
+    descuento DECIMAL(10,2) DEFAULT 0,
+    total_final DECIMAL(10,2) NOT NULL,
+    estado ENUM('pending', 'preparing', 'ready', 'delivered') DEFAULT 'pending',
+    fecha_hora TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    tiempo_preparacion INT DEFAULT NULL
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
+
+CREATE TABLE IF NOT EXISTS productos (
+    id INT AUTO_INCREMENT PRIMARY KEY,
+    nombre VARCHAR(100) NOT NULL,
+    precio DECIMAL(10,2) NOT NULL,
+    categoria VARCHAR(50) NOT NULL,
+    activo TINYINT(1) DEFAULT 1,
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
+
+CREATE TABLE IF NOT EXISTS pedido_items (
+    id INT AUTO_INCREMENT PRIMARY KEY,
+    pedido_id INT NOT NULL,
+    producto_id INT NOT NULL,
+    producto_nombre VARCHAR(100) NOT NULL,
+    precio DECIMAL(10,2) NOT NULL,
+    cantidad INT NOT NULL,
+    FOREIGN KEY (pedido_id) REFERENCES pedidos(id) ON DELETE CASCADE
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
+
+CREATE TABLE IF NOT EXISTS descuentos (
+    id INT AUTO_INCREMENT PRIMARY KEY,
+    codigo VARCHAR(20) UNIQUE NOT NULL,
+    tipo ENUM('porcentaje', 'fijo') NOT NULL,
+    valor DECIMAL(10,2) NOT NULL,
+    activo TINYINT(1) DEFAULT 1
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
+";
+
+if (!$conn->multi_query($sql_tables)) {
+    die("Error creando tablas: " . $conn->error);
 }
 
-if ($tables_check->num_rows == 0) {
-    die("
-    <!DOCTYPE html>
-    <html lang='es'>
-    <head>
-        <meta charset='UTF-8'>
-        <meta name='viewport' content='width=device-width, initial-scale=1.0'>
-        <title>Base de Datos no Configurada</title>
-        <style>
-            body { font-family: Arial, sans-serif; display: flex; justify-content: center; align-items: center; min-height: 100vh; background: #f3f4f6; margin: 0; }
-            .container { background: white; padding: 2rem; border-radius: 0.5rem; box-shadow: 0 4px 6px rgba(0,0,0,0.1); max-width: 600px; }
-            h1 { color: #ef4444; margin-top: 0; }
-            .error { background: #fee2e2; border: 1px solid #ef4444; color: #991b1b; padding: 1rem; border-radius: 0.5rem; margin: 1rem 0; }
-            .info { background: #dbeafe; border: 1px solid #3b82f6; color: #1e40af; padding: 1rem; border-radius: 0.5rem; margin: 1rem 0; }
-            code { background: #f3f4f6; padding: 0.25rem 0.5rem; border-radius: 0.25rem; font-family: monospace; }
-            ol { line-height: 1.8; }
-        </style>
-    </head>
-    <body>
-        <div class='container'>
-            <h1>⚠️ Base de Datos no Configurada</h1>
-            <div class='error'>
-                <strong>Error:</strong> Las tablas de la base de datos no existen. Necesitas crear las tablas antes de usar la aplicación.
-            </div>
-            <div class='info'>
-                <strong>Pasos para solucionar:</strong>
-                <ol>
-                    <li>Conecta a tu base de datos MySQL de Railway usando un cliente (MySQL Workbench, DBeaver, phpMyAdmin, etc.)</li>
-                    <li>O usa Railway CLI: <code>railway connect mysql</code></li>
-                    <li>Ejecuta el script SQL que está en el archivo <code>database.sql</code> de este proyecto</li>
-                    <li>O importa tu dump de base de datos completo</li>
-                    <li>Recarga esta página después de crear las tablas</li>
-                </ol>
-            </div>
-            <p><strong>Base de datos actual:</strong> " . htmlspecialchars(DB_NAME) . "</p>
-            <p><strong>Host:</strong> " . htmlspecialchars(DB_HOST) . "</p>
-            <p><strong>Puerto:</strong> " . htmlspecialchars(DB_PORT) . "</p>
-            <p><strong>Usuario:</strong> " . htmlspecialchars(DB_USER) . "</p>
-            <div class='info' style='margin-top: 1rem; background: #ecfdf5; border-color: #10b981; color: #065f46;'>
-                <strong>📊 Tablas existentes en la base de datos:</strong>
-                <ul style='margin-top: 0.5rem;'>" . 
-                (count($existing_tables) > 0 
-                    ? implode('', array_map(function($table) {
-                        return "<li><code>" . htmlspecialchars($table) . "</code></li>";
-                    }, $existing_tables))
-                    : "<li><em>No se encontraron tablas en esta base de datos</em></li>"
-                ) . "
-                </ul>
-            </div>
-            <div class='info' style='margin-top: 1rem;'>
-                <strong>💡 Tip:</strong> Si ya configuraste las variables de entorno en Railway, verifica que:
-                <ul style='margin-top: 0.5rem;'>
-                    <li>Las variables estén en el servicio PHP (no solo en MySQL)</li>
-                    <li>Los nombres sean exactos: <code>DB_HOST</code>, <code>DB_USER</code>, <code>DB_PASS</code>, <code>DB_NAME</code>, <code>DB_PORT</code></li>
-                    <li>O usa las variables automáticas de Railway: <code>MYSQLHOST</code>, <code>MYSQLUSER</code>, etc.</li>
-                </ul>
-            </div>
-            <div class='info' style='margin-top: 1rem; background: #fef3c7; border-color: #f59e0b; color: #92400e;'>
-                <strong>📋 Para ejecutar el SQL en Railway:</strong>
-                <ol style='margin-top: 0.5rem;'>
-                    <li>Ve a tu servicio MySQL en Railway</li>
-                    <li>Abre la pestaña <strong>Data</strong> o <strong>Query</strong></li>
-                    <li>Copia el contenido del archivo <code>database.sql</code></li>
-                    <li>Pégalo y ejecútalo en el editor SQL</li>
-                    <li>O importa tu dump completo si ya lo tienes</li>
-                </ol>
-            </div>
-        </div>
-    </body>
-    </html>
-    ");
+// Limpiar resultados múltiples
+while ($conn->next_result()) {;}
+
+
+// Insertar usuarios de ejemplo si no existen
+$check_users = $conn->query("SELECT COUNT(*) as count FROM usuarios");
+$row = $check_users->fetch_assoc();
+if ($row['count'] == 0) {
+    $stmt = $conn->prepare("INSERT INTO usuarios (username, password, nombre, rol) VALUES (?, ?, ?, ?)");
+    
+    // Admin: usuario "admin" / contraseña "admin123"
+    $admin_pass = password_hash('admin123', PASSWORD_DEFAULT);
+    $username = 'admin';
+    $nombre = 'Administrador';
+    $rol = 'admin';
+    $stmt->bind_param("ssss", $username, $admin_pass, $nombre, $rol);
+    $stmt->execute();
+    
+    // Mesero: usuario "mesero" / contraseña "mesero123"
+    $mesero_pass = password_hash('mesero123', PASSWORD_DEFAULT);
+    $username = 'mesero';
+    $nombre = 'Mesero Principal';
+    $rol = 'mesero';
+    $stmt->bind_param("ssss", $username, $mesero_pass, $nombre, $rol);
+    $stmt->execute();
+    
+    $stmt->close();
+}
+
+// Insertar productos de ejemplo si no existen
+$check_products = $conn->query("SELECT COUNT(*) as count FROM productos");
+$row = $check_products->fetch_assoc();
+if ($row['count'] == 0) {
+    $productos_iniciales = [
+        ['Hamburguesa Clásica', 45.00, 'Hamburguesas'],
+        ['Hamburguesa Doble', 65.00, 'Hamburguesas'],
+        ['Hamburguesa BBQ', 70.00, 'Hamburguesas'],
+        ['Hamburguesa con Queso', 55.00, 'Hamburguesas'],
+        ['Hot Dog Simple', 30.00, 'Hot Dogs'],
+        ['Hot Dog Especial', 40.00, 'Hot Dogs'],
+        ['Hot Dog Mexicano', 45.00, 'Hot Dogs'],
+        ['Coca Cola', 15.00, 'Bebidas'],
+        ['Agua', 10.00, 'Bebidas'],
+        ['Jugo Natural', 20.00, 'Bebidas'],
+        ['Horchata', 18.00, 'Bebidas'],
+        ['Agua Fresca', 20.00, 'Bebidas'],
+        ['Papas Fritas', 20.00, 'Acompañamientos'],
+        ['Aros de Cebolla', 25.00, 'Acompañamientos'],
+        ['Nachos', 30.00, 'Acompañamientos'],
+        ['Tacos al Pastor', 35.00, 'Tacos'],
+        ['Tacos de Carnitas', 40.00, 'Tacos'],
+        ['Quesadilla', 45.00, 'Mexicanos'],
+        ['Burrito', 50.00, 'Mexicanos'],
+        ['Enchiladas', 48.00, 'Mexicanos'],
+        ['Flan', 25.00, 'Postres'],
+        ['Churros', 20.00, 'Postres'],
+    ];
+    
+    $stmt = $conn->prepare("INSERT INTO productos (nombre, precio, categoria) VALUES (?, ?, ?)");
+    foreach ($productos_iniciales as $prod) {
+        $stmt->bind_param("sds", $prod[0], $prod[1], $prod[2]);
+        $stmt->execute();
+    }
+    $stmt->close();
+}
+
+// Insertar descuentos de ejemplo
+$check_discounts = $conn->query("SELECT COUNT(*) as count FROM descuentos");
+$row = $check_discounts->fetch_assoc();
+if ($row['count'] == 0) {
+    $conn->query("INSERT INTO descuentos (codigo, tipo, valor) VALUES 
+        ('DESC10', 'porcentaje', 10),
+        ('DESC20', 'porcentaje', 20),
+        ('FIJO15', 'fijo', 15)");
 }
 
 // Inicializar carrito
@@ -197,38 +246,6 @@ function icon($name, $size = 20) {
 $action = $_GET['action'] ?? '';
 $view = $_GET['view'] ?? 'pos';
 
-// CREAR/ACTUALIZAR USUARIO ADMIN (solo si no existe o para resetear)
-if ($action === 'create_admin') {
-    $username = 'admin';
-    $password = $_POST['password'] ?? 'Admin123!';
-    $nombre = 'Administrador';
-    $rol = 'admin';
-    
-    $password_hash = password_hash($password, PASSWORD_DEFAULT);
-    
-    // Actualizar o crear usuario
-    $stmt = $conn->prepare("UPDATE usuarios SET password = ?, nombre = ?, rol = ?, activo = 1 WHERE username = ?");
-    $stmt->bind_param("ssss", $password_hash, $nombre, $rol, $username);
-    $stmt->execute();
-    
-    if ($stmt->affected_rows == 0) {
-        // Si no se actualizó, crear nuevo
-        $stmt->close();
-        $stmt = $conn->prepare("INSERT INTO usuarios (username, password, nombre, rol, activo) VALUES (?, ?, ?, ?, 1)");
-        $stmt->bind_param("ssss", $username, $password_hash, $nombre, $rol);
-        $stmt->execute();
-    }
-    
-    if ($stmt->error) {
-        $_SESSION['admin_error'] = 'Error: ' . $stmt->error;
-    } else {
-        $_SESSION['admin_created'] = 'Usuario administrador creado/actualizado exitosamente. Usuario: admin, Contraseña: ' . $password;
-    }
-    $stmt->close();
-    header("Location: ?view=login");
-    exit;
-}
-
 // LOGIN
 if ($action === 'login' && $_SERVER['REQUEST_METHOD'] === 'POST') {
     $username = $_POST['username'] ?? '';
@@ -247,13 +264,10 @@ if ($action === 'login' && $_SERVER['REQUEST_METHOD'] === 'POST') {
             $_SESSION['login_time'] = time();
             header("Location: ?view=pos");
             exit;
-        } else {
-            $_SESSION['login_error'] = 'Contraseña incorrecta';
         }
-    } else {
-        $_SESSION['login_error'] = 'Usuario no encontrado o inactivo';
     }
     
+    $_SESSION['login_error'] = 'Usuario o contraseña incorrectos';
     header("Location: ?view=login");
     exit;
 }
@@ -622,29 +636,8 @@ if ($action === 'print' && isset($_GET['order_id'])) {
 // ====================================================================
 
 function renderLoginView() {
-    global $conn;
     $error = $_SESSION['login_error'] ?? null;
-    $admin_created = $_SESSION['admin_created'] ?? null;
-    $admin_error = $_SESSION['admin_error'] ?? null;
-    unset($_SESSION['login_error'], $_SESSION['admin_created'], $_SESSION['admin_error']);
-    
-    // Verificar si existe el usuario admin
-    $admin_exists = false;
-    $users_count = 0;
-    try {
-        $check = $conn->query("SELECT COUNT(*) as count FROM usuarios");
-        if ($check) {
-            $row = $check->fetch_assoc();
-            $users_count = $row['count'] ?? 0;
-        }
-        $admin_check = $conn->query("SELECT COUNT(*) as count FROM usuarios WHERE username = 'admin'");
-        if ($admin_check) {
-            $admin_row = $admin_check->fetch_assoc();
-            $admin_exists = ($admin_row['count'] ?? 0) > 0;
-        }
-    } catch (Exception $e) {
-        // Ignorar errores
-    }
+    unset($_SESSION['login_error']);
     ?>
     <div style="display: flex; justify-content: center; align-items: center; min-height: 100vh; background: linear-gradient(135deg, #047857 0%, #059669 100%);">
         <div style="background-color: white; border-radius: 1rem; box-shadow: 0 20px 25px -5px rgba(0, 0, 0, 0.1), 0 10px 10px -5px rgba(0, 0, 0, 0.04); padding: 3rem; width: 100%; max-width: 400px;">
@@ -658,33 +651,6 @@ function renderLoginView() {
                 <div style="background-color: #fee2e2; border: 1px solid #ef4444; color: #991b1b; padding: 0.75rem; border-radius: 0.5rem; margin-bottom: 1.5rem; display: flex; align-items: center; gap: 0.5rem;">
                     <span style="font-size: 1.25rem;">⚠️</span>
                     <span style="font-size: 0.875rem;"><?= htmlspecialchars($error) ?></span>
-                </div>
-            <?php endif; ?>
-            
-            <?php if ($admin_created): ?>
-                <div style="background-color: #d1fae5; border: 1px solid #10b981; color: #065f46; padding: 0.75rem; border-radius: 0.5rem; margin-bottom: 1.5rem; display: flex; align-items: center; gap: 0.5rem;">
-                    <span style="font-size: 1.25rem;">✅</span>
-                    <span style="font-size: 0.875rem;"><?= htmlspecialchars($admin_created) ?></span>
-                </div>
-            <?php endif; ?>
-            
-            <?php if ($admin_error): ?>
-                <div style="background-color: #fee2e2; border: 1px solid #ef4444; color: #991b1b; padding: 0.75rem; border-radius: 0.5rem; margin-bottom: 1.5rem;">
-                    <span style="font-size: 0.875rem;"><?= htmlspecialchars($admin_error) ?></span>
-                </div>
-            <?php endif; ?>
-            
-            <?php if (!$admin_exists || $users_count == 0): ?>
-                <div style="background-color: #fef3c7; border: 1px solid #f59e0b; color: #92400e; padding: 1rem; border-radius: 0.5rem; margin-bottom: 1.5rem;">
-                    <div style="font-weight: 600; margin-bottom: 0.5rem;">⚠️ <?= $admin_exists ? 'Actualizar' : 'Crear' ?> Usuario Administrador</div>
-                    <p style="font-size: 0.875rem; margin-bottom: 0.75rem;"><?= $admin_exists ? 'Actualiza la contraseña del usuario admin:' : 'Crea el usuario administrador con la contraseña por defecto:' ?></p>
-                    <form method="POST" action="?action=create_admin">
-                        <input type="hidden" name="password" value="Admin123!">
-                        <button type="submit" style="width: 100%; background-color: #f59e0b; color: white; padding: 0.75rem; border: none; border-radius: 0.5rem; font-weight: 600; cursor: pointer; font-size: 0.875rem;">
-                            <?= $admin_exists ? '🔄 Actualizar Contraseña Admin' : '➕ Crear Usuario Admin' ?> (Admin123!)
-                        </button>
-                    </form>
-                    <p style="font-size: 0.75rem; margin-top: 0.5rem; color: #78350f;">Usuario: <strong>admin</strong> | Contraseña: <strong>Admin123!</strong></p>
                 </div>
             <?php endif; ?>
 
