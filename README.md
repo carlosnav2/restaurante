@@ -27,9 +27,10 @@ Sistema completo de gestión de pedidos para restaurante desarrollado en PHP con
 
 2. **Configurar base de datos**
    - Crea una base de datos MySQL
-   - Copia `.env.example` a `.env` y configura las variables:
+   - Copia `env.example` a `.env` y configura las variables:
      ```env
      DB_HOST=localhost
+     DB_PORT=3306
      DB_USER=root
      DB_PASS=tu_contraseña
      DB_NAME=restaurante_db
@@ -69,7 +70,8 @@ Railway es una plataforma que facilita el despliegue de aplicaciones. Sigue esto
 1. En tu proyecto de Railway, haz clic en **"+ New"**
 2. Selecciona **"Database"** → **"MySQL"**
 3. Railway creará automáticamente una base de datos MySQL
-4. Anota las credenciales que Railway proporciona
+4. **IMPORTANTE**: Necesitas crear las tablas manualmente en la base de datos antes de usar la aplicación
+5. Anota las credenciales que Railway proporciona
 
 ### Paso 4: Configurar Variables de Entorno
 
@@ -77,6 +79,7 @@ Railway es una plataforma que facilita el despliegue de aplicaciones. Sigue esto
 
 Railway crea automáticamente estas variables:
 - `MYSQLHOST`
+- `MYSQLPORT`
 - `MYSQLUSER`
 - `MYSQLPASSWORD`
 - `MYSQLDATABASE`
@@ -86,6 +89,7 @@ El código las detectará automáticamente. **No necesitas configurar nada manua
 Si por alguna razón necesitas usar nombres personalizados, puedes agregar estas variables en la sección **"Variables"**:
 ```
 DB_HOST=tu_host
+DB_PORT=3306
 DB_USER=tu_usuario
 DB_PASS=tu_contraseña
 DB_NAME=tu_base_de_datos
@@ -97,25 +101,39 @@ DB_NAME=tu_base_de_datos
 2. El despliegue comenzará automáticamente
 3. Una vez completado, Railway te dará una URL pública
 
-### Paso 6: Verificar Despliegue
+### Paso 6: Crear las Tablas de la Base de Datos
+
+**IMPORTANTE**: Antes de usar la aplicación, debes crear las tablas en tu base de datos MySQL.
+
+1. En Railway, ve a tu servicio MySQL
+2. Abre la pestaña **"Data"** o **"Query"**
+3. Ejecuta el script SQL que está en el archivo `database.sql` de este proyecto
+4. O conecta usando un cliente MySQL (como MySQL Workbench, phpMyAdmin, o DBeaver) con las credenciales de Railway
+
+### Paso 6.5: Importar Base de Datos
+
+Después de crear las tablas, importa tu dump de base de datos:
+
+1. Conecta a tu base de datos MySQL de Railway usando un cliente (MySQL Workbench, DBeaver, phpMyAdmin, etc.)
+2. Importa tu archivo `.sql` o `.dump` con todos los datos
+3. O usa el comando desde Railway CLI:
+   ```bash
+   railway connect mysql
+   mysql -u $MYSQLUSER -p$MYSQLPASSWORD $MYSQLDATABASE < tu_dump.sql
+   ```
+
+### Paso 7: Verificar Despliegue
 
 1. Accede a la URL proporcionada por Railway
 2. Deberías ver la pantalla de login
-3. El sistema creará automáticamente las tablas en la base de datos
+3. Usa las credenciales que importaste desde tu dump de base de datos
 
-## 👤 Usuarios por Defecto
+## 👤 Usuarios
 
-El sistema crea automáticamente estos usuarios al iniciar:
-
-- **Administrador**
-  - Usuario: `admin`
-  - Contraseña: `admin123`
-
-- **Mesero**
-  - Usuario: `mesero`
-  - Contraseña: `mesero123`
-
-**⚠️ IMPORTANTE**: Cambia estas contraseñas después del primer inicio en producción.
+Los usuarios se importan desde tu dump de base de datos. Asegúrate de que tu dump incluya:
+- Tabla `usuarios` con al menos un usuario administrador
+- Tabla `productos` con los productos del menú
+- Tabla `descuentos` con códigos de descuento (opcional)
 
 ## 📝 Códigos de Descuento
 
@@ -134,6 +152,8 @@ El sistema incluye códigos de descuento de ejemplo:
 
 ### Las tablas no se crean
 
+- **IMPORTANTE**: Las tablas NO se crean automáticamente. Debes ejecutar el script `database.sql` manualmente
+- Verifica que hayas ejecutado el script SQL en tu base de datos de Railway
 - Verifica los permisos del usuario de la base de datos
 - Revisa los logs de Railway para ver errores específicos
 
@@ -147,11 +167,13 @@ El sistema incluye códigos de descuento de ejemplo:
 ```
 restaurante/
 ├── index.php          # Archivo principal de la aplicación
+├── database.sql       # Script SQL para crear las tablas (solo estructura)
 ├── composer.json      # Dependencias PHP
 ├── Procfile          # Comando de inicio para Railway
 ├── railway.json      # Configuración de Railway
-├── .env.example      # Plantilla de variables de entorno
-├── .gitignore        # Archivos a ignorar en Git
+├── nixpacks.toml     # Configuración del builder
+├── env.example       # Plantilla de variables de entorno
+├── .gitignore       # Archivos a ignorar en Git
 └── README.md         # Este archivo
 ```
 

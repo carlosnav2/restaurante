@@ -18,149 +18,16 @@ define('DB_PASS', getenv('MYSQLPASSWORD') ?: getenv('DB_PASS') ?: '');
 define('DB_NAME', getenv('MYSQLDATABASE') ?: getenv('DB_NAME') ?: 'restaurante_db');
 define('DB_PORT', getenv('MYSQLPORT') ?: getenv('DB_PORT') ?: 3306);
 
-// Crear conexión
-$conn = new mysqli(DB_HOST, DB_USER, DB_PASS, '', DB_PORT);
+// Crear conexión directamente a la base de datos
+$conn = new mysqli(DB_HOST, DB_USER, DB_PASS, DB_NAME, DB_PORT);
 
-// Crear base de datos si no existe
-if (!$conn->query("CREATE DATABASE IF NOT EXISTS " . DB_NAME)) {
-    die("Error creando base de datos: " . $conn->error);
+// Verificar conexión
+if ($conn->connect_error) {
+    die("Error de conexión: " . $conn->connect_error);
 }
 
-// Seleccionar base de datos
-if (!$conn->select_db(DB_NAME)) {
-    die("Error seleccionando base de datos: " . $conn->error);
-}
-
-// --- CREAR TABLAS SI NO EXISTEN ---
-$sql_tables = "
-CREATE TABLE IF NOT EXISTS usuarios (
-    id INT AUTO_INCREMENT PRIMARY KEY,
-    username VARCHAR(50) UNIQUE NOT NULL,
-    password VARCHAR(255) NOT NULL,
-    nombre VARCHAR(100) NOT NULL,
-    rol ENUM('admin', 'mesero') NOT NULL,
-    activo TINYINT(1) DEFAULT 1,
-    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
-) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
-
-CREATE TABLE IF NOT EXISTS pedidos (
-    id INT AUTO_INCREMENT PRIMARY KEY,
-    numero_pedido VARCHAR(20) NOT NULL,
-    total DECIMAL(10,2) NOT NULL,
-    descuento DECIMAL(10,2) DEFAULT 0,
-    total_final DECIMAL(10,2) NOT NULL,
-    estado ENUM('pending', 'preparing', 'ready', 'delivered') DEFAULT 'pending',
-    fecha_hora TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-    tiempo_preparacion INT DEFAULT NULL
-) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
-
-CREATE TABLE IF NOT EXISTS productos (
-    id INT AUTO_INCREMENT PRIMARY KEY,
-    nombre VARCHAR(100) NOT NULL,
-    precio DECIMAL(10,2) NOT NULL,
-    categoria VARCHAR(50) NOT NULL,
-    activo TINYINT(1) DEFAULT 1,
-    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
-) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
-
-CREATE TABLE IF NOT EXISTS pedido_items (
-    id INT AUTO_INCREMENT PRIMARY KEY,
-    pedido_id INT NOT NULL,
-    producto_id INT NOT NULL,
-    producto_nombre VARCHAR(100) NOT NULL,
-    precio DECIMAL(10,2) NOT NULL,
-    cantidad INT NOT NULL,
-    FOREIGN KEY (pedido_id) REFERENCES pedidos(id) ON DELETE CASCADE
-) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
-
-CREATE TABLE IF NOT EXISTS descuentos (
-    id INT AUTO_INCREMENT PRIMARY KEY,
-    codigo VARCHAR(20) UNIQUE NOT NULL,
-    tipo ENUM('porcentaje', 'fijo') NOT NULL,
-    valor DECIMAL(10,2) NOT NULL,
-    activo TINYINT(1) DEFAULT 1
-) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
-";
-
-if (!$conn->multi_query($sql_tables)) {
-    die("Error creando tablas: " . $conn->error);
-}
-
-// Limpiar resultados múltiples
-while ($conn->next_result()) {;}
-
-
-// Insertar usuarios de ejemplo si no existen
-$check_users = $conn->query("SELECT COUNT(*) as count FROM usuarios");
-$row = $check_users->fetch_assoc();
-if ($row['count'] == 0) {
-    $stmt = $conn->prepare("INSERT INTO usuarios (username, password, nombre, rol) VALUES (?, ?, ?, ?)");
-    
-    // Admin: usuario "admin" / contraseña "admin123"
-    $admin_pass = password_hash('admin123', PASSWORD_DEFAULT);
-    $username = 'admin';
-    $nombre = 'Administrador';
-    $rol = 'admin';
-    $stmt->bind_param("ssss", $username, $admin_pass, $nombre, $rol);
-    $stmt->execute();
-    
-    // Mesero: usuario "mesero" / contraseña "mesero123"
-    $mesero_pass = password_hash('mesero123', PASSWORD_DEFAULT);
-    $username = 'mesero';
-    $nombre = 'Mesero Principal';
-    $rol = 'mesero';
-    $stmt->bind_param("ssss", $username, $mesero_pass, $nombre, $rol);
-    $stmt->execute();
-    
-    $stmt->close();
-}
-
-// Insertar productos de ejemplo si no existen
-$check_products = $conn->query("SELECT COUNT(*) as count FROM productos");
-$row = $check_products->fetch_assoc();
-if ($row['count'] == 0) {
-    $productos_iniciales = [
-        ['Hamburguesa Clásica', 45.00, 'Hamburguesas'],
-        ['Hamburguesa Doble', 65.00, 'Hamburguesas'],
-        ['Hamburguesa BBQ', 70.00, 'Hamburguesas'],
-        ['Hamburguesa con Queso', 55.00, 'Hamburguesas'],
-        ['Hot Dog Simple', 30.00, 'Hot Dogs'],
-        ['Hot Dog Especial', 40.00, 'Hot Dogs'],
-        ['Hot Dog Mexicano', 45.00, 'Hot Dogs'],
-        ['Coca Cola', 15.00, 'Bebidas'],
-        ['Agua', 10.00, 'Bebidas'],
-        ['Jugo Natural', 20.00, 'Bebidas'],
-        ['Horchata', 18.00, 'Bebidas'],
-        ['Agua Fresca', 20.00, 'Bebidas'],
-        ['Papas Fritas', 20.00, 'Acompañamientos'],
-        ['Aros de Cebolla', 25.00, 'Acompañamientos'],
-        ['Nachos', 30.00, 'Acompañamientos'],
-        ['Tacos al Pastor', 35.00, 'Tacos'],
-        ['Tacos de Carnitas', 40.00, 'Tacos'],
-        ['Quesadilla', 45.00, 'Mexicanos'],
-        ['Burrito', 50.00, 'Mexicanos'],
-        ['Enchiladas', 48.00, 'Mexicanos'],
-        ['Flan', 25.00, 'Postres'],
-        ['Churros', 20.00, 'Postres'],
-    ];
-    
-    $stmt = $conn->prepare("INSERT INTO productos (nombre, precio, categoria) VALUES (?, ?, ?)");
-    foreach ($productos_iniciales as $prod) {
-        $stmt->bind_param("sds", $prod[0], $prod[1], $prod[2]);
-        $stmt->execute();
-    }
-    $stmt->close();
-}
-
-// Insertar descuentos de ejemplo
-$check_discounts = $conn->query("SELECT COUNT(*) as count FROM descuentos");
-$row = $check_discounts->fetch_assoc();
-if ($row['count'] == 0) {
-    $conn->query("INSERT INTO descuentos (codigo, tipo, valor) VALUES 
-        ('DESC10', 'porcentaje', 10),
-        ('DESC20', 'porcentaje', 20),
-        ('FIJO15', 'fijo', 15)");
-}
+// Configurar charset
+$conn->set_charset("utf8mb4");
 
 // Inicializar carrito
 if (!isset($_SESSION['cart'])) {
