@@ -10,10 +10,12 @@ $userRole = $_SESSION['user_role'] ?? null;
 $userName = $_SESSION['user_name'] ?? null;
 
 // --- CONFIGURACIÓN DE BASE DE DATOS ---
-define('DB_HOST', 'localhost');
-define('DB_USER', 'root');
-define('DB_PASS', '');
-define('DB_NAME', 'restaurante_db');
+// Usar variables de entorno para producción (Railway) o valores por defecto para desarrollo local
+// Railway usa MYSQLHOST, MYSQLUSER, MYSQLPASSWORD, MYSQLDATABASE por defecto
+define('DB_HOST', getenv('MYSQLHOST') ?: getenv('DB_HOST') ?: 'localhost');
+define('DB_USER', getenv('MYSQLUSER') ?: getenv('DB_USER') ?: 'root');
+define('DB_PASS', getenv('MYSQLPASSWORD') ?: getenv('DB_PASS') ?: '');
+define('DB_NAME', getenv('MYSQLDATABASE') ?: getenv('DB_NAME') ?: 'restaurante_db');
 
 // Crear conexión
 $conn = new mysqli(DB_HOST, DB_USER, DB_PASS);
