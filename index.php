@@ -23,12 +23,46 @@ define('DB_PASS', getenv('DB_PASS') ?: getenv('MYSQLPASSWORD') ?: '');
 define('DB_NAME', getenv('DB_NAME') ?: getenv('MYSQLDATABASE') ?: 'restaurante_db');
 define('DB_PORT', getenv('DB_PORT') ?: getenv('MYSQLPORT') ?: 3306);
 
-// Crear conexión con manejo de errores mejorado
-$conn = @new mysqli(DB_HOST, DB_USER, DB_PASS, '', DB_PORT);
-if ($conn->connect_error) {
-    die("Error de conexión a la base de datos: " . $conn->connect_error . 
-        " (Host: " . DB_HOST . ", Puerto: " . DB_PORT . ")");
+// Función para conectar con reintentos (útil cuando MySQL está iniciando en Docker)
+function connectDatabase($host, $user, $pass, $port, $max_attempts = 10, $delay = 2) {
+    $last_error = '';
+    $attempt = 0;
+    
+    while ($attempt < $max_attempts) {
+        $conn = @new mysqli($host, $user, $pass, '', $port);
+        
+        if ($conn && !$conn->connect_error) {
+            return $conn;
+        }
+        
+        // Guardar el último error
+        if ($conn) {
+            $last_error = $conn->connect_error;
+        } else {
+            $last_error = 'No se pudo crear la conexión';
+        }
+        
+        $attempt++;
+        if ($attempt < $max_attempts) {
+            sleep($delay);
+        }
+    }
+    
+    // Si llegamos aquí, todos los intentos fallaron
+    $error_msg = "Error de conexión a la base de datos después de {$max_attempts} intentos.\n";
+    $error_msg .= "Último error: " . $last_error . "\n";
+    $error_msg .= "Configuración: Host={$host}, Puerto={$port}, Usuario={$user}\n\n";
+    $error_msg .= "Posibles soluciones:\n";
+    $error_msg .= "1. Verifica que MySQL esté corriendo: docker ps (si usas Docker)\n";
+    $error_msg .= "2. Verifica que el puerto {$port} esté accesible\n";
+    $error_msg .= "3. Verifica las credenciales de acceso\n";
+    $error_msg .= "4. Si usas Docker, espera unos segundos y recarga la página\n";
+    
+    die($error_msg);
 }
+
+// Crear conexión con reintentos
+$conn = connectDatabase(DB_HOST, DB_USER, DB_PASS, DB_PORT);
 
 // Crear base de datos si no existe
 if (!$conn->query("CREATE DATABASE IF NOT EXISTS " . DB_NAME)) {
