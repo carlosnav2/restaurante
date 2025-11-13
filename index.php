@@ -81,7 +81,7 @@ if ($tables_check->num_rows == 0) {
                 <strong>📋 Para ejecutar el SQL en Railway:</strong>
                 <ol style='margin-top: 0.5rem;'>
                     <li>Ve a tu servicio MySQL en Railway</li>
-                    <li>Abre la pestaña <strong>"Data"</strong> o <strong>"Query"</strong></li>
+                    <li>Abre la pestaña <strong>Data</strong> o <strong>Query</strong></li>
                     <li>Copia el contenido del archivo <code>database.sql</code></li>
                     <li>Pégalo y ejecútalo en el editor SQL</li>
                     <li>O importa tu dump completo si ya lo tienes</li>
