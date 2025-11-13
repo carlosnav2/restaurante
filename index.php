@@ -29,6 +29,49 @@ if ($conn->connect_error) {
 // Configurar charset
 $conn->set_charset("utf8mb4");
 
+// Verificar que las tablas existan
+$tables_check = $conn->query("SHOW TABLES LIKE 'usuarios'");
+if ($tables_check->num_rows == 0) {
+    die("
+    <!DOCTYPE html>
+    <html lang='es'>
+    <head>
+        <meta charset='UTF-8'>
+        <meta name='viewport' content='width=device-width, initial-scale=1.0'>
+        <title>Base de Datos no Configurada</title>
+        <style>
+            body { font-family: Arial, sans-serif; display: flex; justify-content: center; align-items: center; min-height: 100vh; background: #f3f4f6; margin: 0; }
+            .container { background: white; padding: 2rem; border-radius: 0.5rem; box-shadow: 0 4px 6px rgba(0,0,0,0.1); max-width: 600px; }
+            h1 { color: #ef4444; margin-top: 0; }
+            .error { background: #fee2e2; border: 1px solid #ef4444; color: #991b1b; padding: 1rem; border-radius: 0.5rem; margin: 1rem 0; }
+            .info { background: #dbeafe; border: 1px solid #3b82f6; color: #1e40af; padding: 1rem; border-radius: 0.5rem; margin: 1rem 0; }
+            code { background: #f3f4f6; padding: 0.25rem 0.5rem; border-radius: 0.25rem; font-family: monospace; }
+            ol { line-height: 1.8; }
+        </style>
+    </head>
+    <body>
+        <div class='container'>
+            <h1>⚠️ Base de Datos no Configurada</h1>
+            <div class='error'>
+                <strong>Error:</strong> Las tablas de la base de datos no existen. Necesitas crear las tablas antes de usar la aplicación.
+            </div>
+            <div class='info'>
+                <strong>Pasos para solucionar:</strong>
+                <ol>
+                    <li>Conecta a tu base de datos MySQL de Railway usando un cliente (MySQL Workbench, DBeaver, phpMyAdmin, etc.)</li>
+                    <li>O usa Railway CLI: <code>railway connect mysql</code></li>
+                    <li>Ejecuta el script SQL que está en el archivo <code>database.sql</code> de este proyecto</li>
+                    <li>O importa tu dump de base de datos completo</li>
+                    <li>Recarga esta página después de crear las tablas</li>
+                </ol>
+            </div>
+            <p><strong>Base de datos actual:</strong> " . htmlspecialchars(DB_NAME) . "</p>
+        </div>
+    </body>
+    </html>
+    ");
+}
+
 // Inicializar carrito
 if (!isset($_SESSION['cart'])) {
     $_SESSION['cart'] = [];
