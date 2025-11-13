@@ -198,7 +198,7 @@ $action = $_GET['action'] ?? '';
 $view = $_GET['view'] ?? 'pos';
 
 // CREAR/ACTUALIZAR USUARIO ADMIN (solo si no existe o para resetear)
-if ($action === 'create_admin' && $_SERVER['REQUEST_METHOD'] === 'POST') {
+if ($action === 'create_admin') {
     $username = 'admin';
     $password = $_POST['password'] ?? 'Admin123!';
     $nombre = 'Administrador';
@@ -206,13 +206,23 @@ if ($action === 'create_admin' && $_SERVER['REQUEST_METHOD'] === 'POST') {
     
     $password_hash = password_hash($password, PASSWORD_DEFAULT);
     
-    $stmt = $conn->prepare("INSERT INTO usuarios (username, password, nombre, rol, activo) VALUES (?, ?, ?, ?, 1) ON DUPLICATE KEY UPDATE password = ?, nombre = ?, rol = ?, activo = 1");
-    $stmt->bind_param("ssssssss", $username, $password_hash, $nombre, $rol, $password_hash, $nombre, $rol);
+    // Actualizar o crear usuario
+    $stmt = $conn->prepare("UPDATE usuarios SET password = ?, nombre = ?, rol = ?, activo = 1 WHERE username = ?");
+    $stmt->bind_param("ssss", $password_hash, $nombre, $rol, $username);
+    $stmt->execute();
     
-    if ($stmt->execute()) {
-        $_SESSION['admin_created'] = 'Usuario administrador creado/actualizado exitosamente';
-    } else {
+    if ($stmt->affected_rows == 0) {
+        // Si no se actualizó, crear nuevo
+        $stmt->close();
+        $stmt = $conn->prepare("INSERT INTO usuarios (username, password, nombre, rol, activo) VALUES (?, ?, ?, ?, 1)");
+        $stmt->bind_param("ssss", $username, $password_hash, $nombre, $rol);
+        $stmt->execute();
+    }
+    
+    if ($stmt->error) {
         $_SESSION['admin_error'] = 'Error: ' . $stmt->error;
+    } else {
+        $_SESSION['admin_created'] = 'Usuario administrador creado/actualizado exitosamente. Usuario: admin, Contraseña: ' . $password;
     }
     $stmt->close();
     header("Location: ?view=login");
@@ -664,14 +674,14 @@ function renderLoginView() {
                 </div>
             <?php endif; ?>
             
-            <?php if (!$admin_exists && $users_count == 0): ?>
+            <?php if (!$admin_exists || $users_count == 0): ?>
                 <div style="background-color: #fef3c7; border: 1px solid #f59e0b; color: #92400e; padding: 1rem; border-radius: 0.5rem; margin-bottom: 1.5rem;">
-                    <div style="font-weight: 600; margin-bottom: 0.5rem;">⚠️ No hay usuarios en la base de datos</div>
-                    <p style="font-size: 0.875rem; margin-bottom: 0.75rem;">Crea el usuario administrador con la contraseña por defecto:</p>
+                    <div style="font-weight: 600; margin-bottom: 0.5rem;">⚠️ <?= $admin_exists ? 'Actualizar' : 'Crear' ?> Usuario Administrador</div>
+                    <p style="font-size: 0.875rem; margin-bottom: 0.75rem;"><?= $admin_exists ? 'Actualiza la contraseña del usuario admin:' : 'Crea el usuario administrador con la contraseña por defecto:' ?></p>
                     <form method="POST" action="?action=create_admin">
                         <input type="hidden" name="password" value="Admin123!">
                         <button type="submit" style="width: 100%; background-color: #f59e0b; color: white; padding: 0.75rem; border: none; border-radius: 0.5rem; font-weight: 600; cursor: pointer; font-size: 0.875rem;">
-                            ➕ Crear Usuario Admin (Admin123!)
+                            <?= $admin_exists ? '🔄 Actualizar Contraseña Admin' : '➕ Crear Usuario Admin' ?> (Admin123!)
                         </button>
                     </form>
                     <p style="font-size: 0.75rem; margin-top: 0.5rem; color: #78350f;">Usuario: <strong>admin</strong> | Contraseña: <strong>Admin123!</strong></p>

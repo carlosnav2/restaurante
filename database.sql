@@ -54,18 +54,25 @@ CREATE TABLE IF NOT EXISTS descuentos (
     activo TINYINT(1) DEFAULT 1
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
 
+-- ⚠️ IMPORTANTE: Este INSERT puede no funcionar porque el hash puede ser incorrecto
+-- Mejor opción: Usa el botón en la pantalla de login o ejecuta create_admin_user.php
+--
+-- Si quieres usar SQL directamente, primero genera el hash ejecutando:
+-- php -r "echo password_hash('Admin123!', PASSWORD_DEFAULT);"
+-- Luego reemplaza el hash abajo con el generado
+
 -- Crear usuario administrador por defecto
 -- Usuario: admin
 -- Contraseña: Admin123!
-INSERT INTO usuarios (username, password, nombre, rol) VALUES 
-('admin', '$2y$10$N9qo8uLOickgx2ZMRZoMyeIjZAgcfl7p92ldGxad68LJZdL17lhWy', 'Administrador', 'admin')
-ON DUPLICATE KEY UPDATE username=username;
+-- NOTA: Este hash puede no funcionar. Mejor usa el botón web o el script PHP
+INSERT INTO usuarios (username, password, nombre, rol, activo) VALUES 
+('admin', '$2y$10$N9qo8uLOickgx2ZMRZoMyeIjZAgcfl7p92ldGxad68LJZdL17lhWy', 'Administrador', 'admin', 1)
+ON DUPLICATE KEY UPDATE password = VALUES(password), activo = 1;
 
--- NOTA: La contraseña por defecto es: Admin123!
--- ⚠️ IMPORTANTE: Cambia esta contraseña después del primer inicio en producción
--- 
--- Para generar un nuevo hash de contraseña, ejecuta en PHP:
--- php -r "echo password_hash('tu_nueva_contraseña', PASSWORD_DEFAULT);"
+-- ⚠️ Si el hash no funciona, usa una de estas opciones:
+-- 1. Ve a la pantalla de login y haz clic en "Crear Usuario Admin"
+-- 2. Ejecuta: php create_admin_user.php
+-- 3. O genera un nuevo hash y actualiza el INSERT arriba
 
 -- NOTA: Los productos y descuentos se importan desde tu dump de base de datos
 -- Si necesitas datos de ejemplo, puedes descomentar las siguientes líneas:
