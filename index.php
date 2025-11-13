@@ -11,14 +11,15 @@ $userName = $_SESSION['user_name'] ?? null;
 
 // --- CONFIGURACIÓN DE BASE DE DATOS ---
 // Usar variables de entorno para producción (Railway) o valores por defecto para desarrollo local
-// Railway usa MYSQLHOST, MYSQLUSER, MYSQLPASSWORD, MYSQLDATABASE por defecto
+// Railway usa MYSQLHOST, MYSQLUSER, MYSQLPASSWORD, MYSQLDATABASE, MYSQLPORT por defecto
 define('DB_HOST', getenv('MYSQLHOST') ?: getenv('DB_HOST') ?: 'localhost');
 define('DB_USER', getenv('MYSQLUSER') ?: getenv('DB_USER') ?: 'root');
 define('DB_PASS', getenv('MYSQLPASSWORD') ?: getenv('DB_PASS') ?: '');
 define('DB_NAME', getenv('MYSQLDATABASE') ?: getenv('DB_NAME') ?: 'restaurante_db');
+define('DB_PORT', getenv('MYSQLPORT') ?: getenv('DB_PORT') ?: 3306);
 
 // Crear conexión
-$conn = new mysqli(DB_HOST, DB_USER, DB_PASS);
+$conn = new mysqli(DB_HOST, DB_USER, DB_PASS, '', DB_PORT);
 
 // Crear base de datos si no existe
 if (!$conn->query("CREATE DATABASE IF NOT EXISTS " . DB_NAME)) {
@@ -26,7 +27,9 @@ if (!$conn->query("CREATE DATABASE IF NOT EXISTS " . DB_NAME)) {
 }
 
 // Seleccionar base de datos
-$conn->select_db(DB_NAME);
+if (!$conn->select_db(DB_NAME)) {
+    die("Error seleccionando base de datos: " . $conn->error);
+}
 
 // --- CREAR TABLAS SI NO EXISTEN ---
 $sql_tables = "
