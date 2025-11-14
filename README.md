@@ -44,11 +44,27 @@ pip install -r requirements.txt
    > **Importante:** El archivo `.env` contiene información sensible y no debe subirse al repositorio. Asegúrate de que esté en `.gitignore`.
 
 4. **Inicializar la base de datos (IMPORTANTE):**
-```bash
-python init_db.py
-```
 
-Este script creará las tablas y datos iniciales. **Debe ejecutarse antes de iniciar la aplicación por primera vez.**
+   **Opción A: Usando Python (Recomendado)**
+   ```bash
+   python init_db.py
+   ```
+
+   **Opción B: Usando SQL directamente**
+   ```bash
+   mysql -u root -p < init_database.sql
+   ```
+   
+   O desde MySQL:
+   ```sql
+   mysql> SOURCE init_database.sql;
+   ```
+
+   > **Nota:** El script SQL (`init_database.sql`) crea la base de datos, tablas y datos iniciales. 
+   > Asegúrate de que el nombre de la base de datos en el script coincida con tu configuración en `.env`.
+   > Por defecto usa `restaurante_db`.
+
+   **Debe ejecutarse antes de iniciar la aplicación por primera vez.**
 
 5. **Ejecutar la aplicación:**
 ```bash
@@ -65,24 +81,27 @@ uvicorn main:app --reload --host 0.0.0.0 --port 8000
 
 ## 👤 Usuarios por Defecto
 
-El script `init_db.py` crea dos usuarios de prueba:
+Los scripts `init_db.py` o `init_database.sql` crean dos usuarios de prueba:
 
 **Administrador:**
 - Usuario: `admin`
 - Contraseña: `admin123`
+- Rol: `admin`
 
 **Mesero:**
 - Usuario: `mesero`
 - Contraseña: `mesero123`
+- Rol: `mesero`
 
-> **Nota:** Estos usuarios se crean cuando ejecutas `python init_db.py` por primera vez.
+> **Nota:** Estos usuarios se crean cuando ejecutas `python init_db.py` o `init_database.sql` por primera vez.
 
 ## 📁 Estructura del Proyecto
 
 ```
 .
 ├── main.py                 # Aplicación principal FastAPI
-├── init_db.py             # Script para inicializar la base de datos
+├── init_db.py             # Script Python para inicializar la base de datos
+├── init_database.sql      # Script SQL para inicializar la base de datos
 ├── config.py              # Configuración (BD, secretos) - Usa .env
 ├── database.py            # Configuración y creación de BD
 ├── models.py              # Modelos de datos

@@ -13,6 +13,7 @@ from reportlab.lib.styles import getSampleStyleSheet, ParagraphStyle
 from reportlab.lib.units import inch
 import sys
 import os
+import re
 
 sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
@@ -325,7 +326,15 @@ def generate_pdf_sales_day(date_str: str, stats: dict, orders: list):
         story.append(Paragraph("Pedidos del Día", styles['Heading3']))
         order_data = [['Nº Pedido', 'Fecha/Hora', 'Total', 'Estado']]
         for order in orders[:50]:  # Limitar a 50 pedidos por página
-            fecha = order.get('fecha_hora', '')[:16] if order.get('fecha_hora') else ''
+            # Convertir fecha_hora a string si es datetime
+            fecha_hora = order.get('fecha_hora', '')
+            if fecha_hora:
+                if hasattr(fecha_hora, 'strftime'):
+                    fecha = fecha_hora.strftime('%Y-%m-%d %H:%M')[:16]
+                else:
+                    fecha = str(fecha_hora)[:16]
+            else:
+                fecha = ''
             order_data.append([
                 order.get('numero_pedido', ''),
                 fecha,
@@ -546,9 +555,25 @@ async def export_sales_day_pdf(request: Request, date: str = Query(...)):
     
     try:
         # Validar formato de fecha
-        if date.lower() in ['true', 'false', ''] or not date:
+        if not date or date.lower() in ['true', 'false', '']:
             return Response(
                 content="Error: Se requiere una fecha válida en formato YYYY-MM-DD",
+                status_code=400,
+                media_type='text/plain'
+            )
+        
+        # Validar que sea un string y tenga el formato correcto
+        if not isinstance(date, str) or not date.strip():
+            return Response(
+                content="Error: Se requiere una fecha válida en formato YYYY-MM-DD",
+                status_code=400,
+                media_type='text/plain'
+            )
+        
+        # Validar formato con regex antes de parsear
+        if not re.match(r'^\d{4}-\d{2}-\d{2}$', date.strip()):
+            return Response(
+                content="Error: Formato de fecha inválido. Debe ser YYYY-MM-DD (ejemplo: 2025-11-14)",
                 status_code=400,
                 media_type='text/plain'
             )
@@ -556,7 +581,7 @@ async def export_sales_day_pdf(request: Request, date: str = Query(...)):
         conn = get_db_connection()
         cursor = conn.cursor(dictionary=True)
         
-        query_date = datetime.strptime(date, '%Y-%m-%d').date()
+        query_date = datetime.strptime(date.strip(), '%Y-%m-%d').date()
         
         # Ventas del día
         cursor.execute("""
@@ -579,10 +604,19 @@ async def export_sales_day_pdf(request: Request, date: str = Query(...)):
         """, (query_date,))
         orders = cursor.fetchall()
         
+        # Convertir datetime a string para evitar errores de serialización
+        for order in orders:
+            if order.get('fecha_hora'):
+                if hasattr(order['fecha_hora'], 'strftime'):
+                    order['fecha_hora'] = order['fecha_hora'].strftime('%Y-%m-%d %H:%M:%S')
+                else:
+                    order['fecha_hora'] = str(order['fecha_hora'])
+        
         cursor.close()
         conn.close()
         
         stats = convert_decimals(stats)
+        orders = convert_decimals(orders)
         pdf_buffer = generate_pdf_sales_day(str(query_date), stats, orders)
         
         return Response(
