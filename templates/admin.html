@@ -1161,10 +1161,10 @@ function generateSalesDayReport() {
                                         </table>
                                     </div>
                                     <div style="margin-top: 1rem; text-align: center;">
-                                        <a href="/api/reports/pdf/sales-day?date=${selectedDate}" target="_blank" 
-                                           style="display: inline-block; background-color: #8b5cf6; color: white; padding: 0.75rem 1.5rem; border-radius: 0.5rem; text-decoration: none; font-weight: 600;">
+                                        <button onclick="window.open('/api/reports/pdf/sales-day?date=${selectedDate}', '_blank')" 
+                                           style="display: inline-block; background-color: #8b5cf6; color: white; padding: 0.75rem 1.5rem; border-radius: 0.5rem; border: none; cursor: pointer; font-weight: 600;">
                                             📄 Exportar PDF
-                                        </a>
+                                        </button>
                                     </div>
                                 </div>
                             `,
@@ -1209,11 +1209,15 @@ function generateTopProductsReport() {
             return { startDate, endDate, limit };
         }
     }).then((result) => {
-        if (result.isConfirmed) {
+        if (result.isConfirmed && result.value) {
             const params = new URLSearchParams();
-            if (result.value.startDate) params.append('start_date', result.value.startDate);
-            if (result.value.endDate) params.append('end_date', result.value.endDate);
-            params.append('limit', result.value.limit);
+            const startDate = result.value.startDate || '';
+            const endDate = result.value.endDate || '';
+            const limit = result.value.limit || 10;
+            
+            if (startDate) params.append('start_date', startDate);
+            if (endDate) params.append('end_date', endDate);
+            params.append('limit', limit);
             
             fetch(`/api/reports/top-products?${params.toString()}`)
                 .then(res => res.json())
@@ -1227,6 +1231,13 @@ function generateTopProductsReport() {
                                 <td style="text-align: right; color: #10b981; font-weight: bold;">Q${parseFloat(prod.ingresos_totales).toFixed(2)}</td>
                             </tr>
                         `).join('');
+                        
+                        // Construir URL para PDF
+                        const pdfParams = new URLSearchParams();
+                        if (startDate) pdfParams.append('start_date', startDate);
+                        if (endDate) pdfParams.append('end_date', endDate);
+                        pdfParams.append('limit', limit);
+                        const pdfUrl = `/api/reports/pdf/top-products?${pdfParams.toString()}`;
                         
                         Swal.fire({
                             title: '🏆 Productos Más Vendidos',
@@ -1245,17 +1256,18 @@ function generateTopProductsReport() {
                                             ${productsHtml || '<tr><td colspan="4" style="text-align: center; padding: 1rem; color: #9ca3af;">No hay datos</td></tr>'}
                                         </tbody>
                                     </table>
+                                    <div style="margin-top: 1rem; text-align: center;">
+                                        <button onclick="window.open('${pdfUrl}', '_blank')" 
+                                           style="display: inline-block; background-color: #8b5cf6; color: white; padding: 0.75rem 1.5rem; border-radius: 0.5rem; border: none; cursor: pointer; font-weight: 600; margin-top: 1rem;">
+                                            📄 Exportar PDF
+                                        </button>
+                                    </div>
                                 </div>
                             `,
                             width: '700px',
-                            showCancelButton: true,
-                            confirmButtonText: '📄 Exportar PDF',
-                            cancelButtonText: 'Cerrar',
+                            showCancelButton: false,
+                            confirmButtonText: 'Cerrar',
                             confirmButtonColor: '#8b5cf6'
-                        }).then((result) => {
-                            if (result.isConfirmed) {
-                                window.open(`/api/reports/pdf/sales-day?date=${result.value}`, '_blank');
-                            }
                         });
                     } else {
                         Swal.fire('Error', data.error || 'No se pudo generar el reporte', 'error');
@@ -1298,8 +1310,11 @@ function showSalesRangeForm() {
             return { start, end };
         }
     }).then((result) => {
-        if (result.isConfirmed) {
-            fetch(`/api/reports/sales-range?start_date=${result.value.start}&end_date=${result.value.end}`)
+        if (result.isConfirmed && result.value) {
+            const startDate = result.value.start;
+            const endDate = result.value.end;
+            
+            fetch(`/api/reports/sales-range?start_date=${startDate}&end_date=${endDate}`)
                 .then(res => res.json())
                 .then(data => {
                     if (data.success) {
@@ -1311,6 +1326,9 @@ function showSalesRangeForm() {
                                 <td style="text-align: right; color: #10b981; font-weight: bold;">Q${parseFloat(day.ventas).toFixed(2)}</td>
                             </tr>
                         `).join('');
+                        
+                        // Construir URL para PDF
+                        const pdfUrl = `/api/reports/pdf/sales-range?start_date=${encodeURIComponent(startDate)}&end_date=${encodeURIComponent(endDate)}`;
                         
                         Swal.fire({
                             title: `📅 Reporte ${data.start_date} al ${data.end_date}`,
@@ -1340,17 +1358,18 @@ function showSalesRangeForm() {
                                             </tbody>
                                         </table>
                                     </div>
+                                    <div style="margin-top: 1rem; text-align: center;">
+                                        <button onclick="window.open('${pdfUrl}', '_blank')" 
+                                           style="display: inline-block; background-color: #8b5cf6; color: white; padding: 0.75rem 1.5rem; border-radius: 0.5rem; border: none; cursor: pointer; font-weight: 600;">
+                                            📄 Exportar PDF
+                                        </button>
+                                    </div>
                                 </div>
                             `,
                             width: '700px',
-                            showCancelButton: true,
-                            confirmButtonText: '📄 Exportar PDF',
-                            cancelButtonText: 'Cerrar',
+                            showCancelButton: false,
+                            confirmButtonText: 'Cerrar',
                             confirmButtonColor: '#8b5cf6'
-                        }).then((result) => {
-                            if (result.isConfirmed) {
-                                window.open(`/api/reports/pdf/sales-day?date=${result.value}`, '_blank');
-                            }
                         });
                     } else {
                         Swal.fire('Error', data.error || 'No se pudo generar el reporte', 'error');
@@ -1386,10 +1405,13 @@ function generateCategoriesReport() {
             };
         }
     }).then((result) => {
-        if (result.isConfirmed) {
+        if (result.isConfirmed && result.value) {
             const params = new URLSearchParams();
-            if (result.value.startDate) params.append('start_date', result.value.startDate);
-            if (result.value.endDate) params.append('end_date', result.value.endDate);
+            const startDate = result.value.startDate || '';
+            const endDate = result.value.endDate || '';
+            
+            if (startDate) params.append('start_date', startDate);
+            if (endDate) params.append('end_date', endDate);
             
             fetch(`/api/reports/categories?${params.toString()}`)
                 .then(res => res.json())
@@ -1403,6 +1425,12 @@ function generateCategoriesReport() {
                                 <td style="text-align: right; color: #10b981; font-weight: bold;">Q${parseFloat(cat.ingresos_totales).toFixed(2)}</td>
                             </tr>
                         `).join('');
+                        
+                        // Construir URL para PDF
+                        const pdfParams = new URLSearchParams();
+                        if (startDate) pdfParams.append('start_date', startDate);
+                        if (endDate) pdfParams.append('end_date', endDate);
+                        const pdfUrl = `/api/reports/pdf/categories?${pdfParams.toString()}`;
                         
                         Swal.fire({
                             title: '📦 Reporte por Categorías',
@@ -1421,17 +1449,18 @@ function generateCategoriesReport() {
                                             ${categoriesHtml || '<tr><td colspan="4" style="text-align: center; padding: 1rem; color: #9ca3af;">No hay datos</td></tr>'}
                                         </tbody>
                                     </table>
+                                    <div style="margin-top: 1rem; text-align: center;">
+                                        <button onclick="window.open('${pdfUrl}', '_blank')" 
+                                           style="display: inline-block; background-color: #8b5cf6; color: white; padding: 0.75rem 1.5rem; border-radius: 0.5rem; border: none; cursor: pointer; font-weight: 600; margin-top: 1rem;">
+                                            📄 Exportar PDF
+                                        </button>
+                                    </div>
                                 </div>
                             `,
                             width: '700px',
-                            showCancelButton: true,
-                            confirmButtonText: '📄 Exportar PDF',
-                            cancelButtonText: 'Cerrar',
+                            showCancelButton: false,
+                            confirmButtonText: 'Cerrar',
                             confirmButtonColor: '#8b5cf6'
-                        }).then((result) => {
-                            if (result.isConfirmed) {
-                                window.open(`/api/reports/pdf/sales-day?date=${result.value}`, '_blank');
-                            }
                         });
                     } else {
                         Swal.fire('Error', data.error || 'No se pudo generar el reporte', 'error');
