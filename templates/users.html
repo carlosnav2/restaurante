@@ -1,0 +1,225 @@
+{% extends "base.html" %}
+
+{% block title %}Gestión de Usuarios - Sistema de Pedidos{% endblock %}
+
+{% block content %}
+<div style="padding: 1.5rem; background-color: #f9fafb; height: 100%; overflow-y: auto;">
+    <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 1.5rem;">
+        <h2 style="font-size: 1.5rem; font-weight: bold; color: #1f2937;">👥 Gestión de Usuarios</h2>
+        <a href="/admin" style="background-color: #6b7280; color: white; padding: 0.5rem 1rem; border-radius: 0.375rem; text-decoration: none; font-weight: 600; font-size: 0.875rem;">
+            ← Volver al Panel
+        </a>
+    </div>
+
+    {% if error %}
+    <div style="background-color: #fee2e2; border: 1px solid #ef4444; color: #991b1b; padding: 1rem; border-radius: 0.5rem; margin-bottom: 1rem; display: flex; align-items: center; gap: 0.5rem;">
+        <span style="font-size: 1.25rem;">⚠️</span>
+        <span>{{ error }}</span>
+    </div>
+    {% endif %}
+
+    {% if success %}
+    <div style="background-color: #d1fae5; border: 1px solid #10b981; color: #065f46; padding: 1rem; border-radius: 0.5rem; margin-bottom: 1rem; display: flex; align-items: center; gap: 0.5rem;">
+        <span style="font-size: 1.25rem;">✅</span>
+        <span>{{ success }}</span>
+    </div>
+    {% endif %}
+
+    <!-- FILTROS Y BÚSQUEDA -->
+    <div style="background-color: white; border-radius: 0.5rem; box-shadow: 0 1px 3px rgba(0,0,0,0.1); padding: 1.5rem; margin-bottom: 1.5rem;">
+        <form method="GET" action="/admin/users" style="display: grid; grid-template-columns: 2fr 1fr 1fr auto; gap: 1rem; align-items: end;">
+            <div>
+                <label style="display: block; color: #374151; font-weight: 600; margin-bottom: 0.5rem; font-size: 0.875rem;">
+                    🔍 Buscar
+                </label>
+                <input type="text" name="search" value="{{ search }}" placeholder="Nombre o usuario..."
+                       style="width: 100%; padding: 0.75rem; border: 1px solid #d1d5db; border-radius: 0.5rem; font-size: 0.875rem;">
+            </div>
+            <div>
+                <label style="display: block; color: #374151; font-weight: 600; margin-bottom: 0.5rem; font-size: 0.875rem;">
+                    👤 Rol
+                </label>
+                <select name="role" style="width: 100%; padding: 0.75rem; border: 1px solid #d1d5db; border-radius: 0.5rem; font-size: 0.875rem;">
+                    <option value="">Todos</option>
+                    <option value="admin" {{ 'selected' if role_filter == 'admin' else '' }}>👨‍💼 Administrador</option>
+                    <option value="mesero" {{ 'selected' if role_filter == 'mesero' else '' }}>👨‍🍳 Mesero</option>
+                </select>
+            </div>
+            <div>
+                <label style="display: block; color: #374151; font-weight: 600; margin-bottom: 0.5rem; font-size: 0.875rem;">
+                    📊 Estado
+                </label>
+                <select name="active" style="width: 100%; padding: 0.75rem; border: 1px solid #d1d5db; border-radius: 0.5rem; font-size: 0.875rem;">
+                    <option value="">Todos</option>
+                    <option value="true" {{ 'selected' if active_filter == 'true' else '' }}>✅ Activos</option>
+                    <option value="false" {{ 'selected' if active_filter == 'false' else '' }}>❌ Inactivos</option>
+                </select>
+            </div>
+            <button type="submit" style="background-color: #3b82f6; color: white; padding: 0.75rem 1.5rem; border: none; border-radius: 0.5rem; font-weight: 600; cursor: pointer;">
+                🔍 Buscar
+            </button>
+        </form>
+        
+        <div style="margin-top: 1rem; display: flex; gap: 0.5rem;">
+            <a href="/admin/users" style="background-color: #e5e7eb; color: #4b5563; padding: 0.5rem 1rem; border-radius: 0.375rem; text-decoration: none; font-weight: 600; font-size: 0.875rem;">
+                🔄 Limpiar Filtros
+            </a>
+            <a href="/admin/users?action=add" style="background-color: #10b981; color: white; padding: 0.5rem 1rem; border-radius: 0.375rem; text-decoration: none; font-weight: 600; font-size: 0.875rem;">
+                ➕ Agregar Usuario
+            </a>
+        </div>
+    </div>
+
+    <!-- FORMULARIO DE AGREGAR/EDITAR -->
+    {% if show_add_form or editing_user %}
+    <div style="background-color: white; border-radius: 0.5rem; box-shadow: 0 1px 3px rgba(0,0,0,0.1); padding: 1.5rem; margin-bottom: 1.5rem;">
+        <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 1.5rem;">
+            <h3 style="font-size: 1.25rem; font-weight: 600; color: #1f2937;">
+                {{ '✏️ Editar Usuario' if editing_user else '➕ Agregar Nuevo Usuario' }}
+            </h3>
+            <a href="/admin/users" style="color: #6b7280; text-decoration: none; font-size: 0.875rem;">✕ Cancelar</a>
+        </div>
+        
+        <form method="POST" action="/admin/users/{{ 'edit' if editing_user else 'add' }}">
+            {% if editing_user %}
+            <input type="hidden" name="id" value="{{ editing_user.id }}">
+            {% endif %}
+            
+            <div style="display: grid; grid-template-columns: repeat(2, 1fr); gap: 1rem; margin-bottom: 1rem;">
+                <div>
+                    <label style="display: block; color: #374151; font-weight: 600; margin-bottom: 0.5rem; font-size: 0.875rem;">
+                        Nombre Completo *
+                    </label>
+                    <input type="text" name="nombre" required
+                           value="{{ editing_user.nombre if editing_user else '' }}"
+                           placeholder="Ej: Juan Pérez"
+                           style="width: 100%; padding: 0.75rem; border: 1px solid #d1d5db; border-radius: 0.5rem; font-size: 0.875rem;">
+                </div>
+                
+                <div>
+                    <label style="display: block; color: #374151; font-weight: 600; margin-bottom: 0.5rem; font-size: 0.875rem;">
+                        Usuario *
+                    </label>
+                    <input type="text" name="username" required
+                           value="{{ editing_user.username if editing_user else '' }}"
+                           placeholder="Ej: jperez"
+                           style="width: 100%; padding: 0.75rem; border: 1px solid #d1d5db; border-radius: 0.5rem; font-size: 0.875rem;">
+                </div>
+            </div>
+            
+            <div style="display: grid; grid-template-columns: repeat(2, 1fr); gap: 1rem; margin-bottom: 1rem;">
+                <div>
+                    <label style="display: block; color: #374151; font-weight: 600; margin-bottom: 0.5rem; font-size: 0.875rem;">
+                        Rol *
+                    </label>
+                    <select name="rol" required style="width: 100%; padding: 0.75rem; border: 1px solid #d1d5db; border-radius: 0.5rem; font-size: 0.875rem;">
+                        <option value="">Seleccionar rol</option>
+                        <option value="admin" {{ 'selected' if editing_user and editing_user.rol == 'admin' else '' }}>👨‍💼 Administrador</option>
+                        <option value="mesero" {{ 'selected' if editing_user and editing_user.rol == 'mesero' else '' }}>👨‍🍳 Mesero</option>
+                    </select>
+                </div>
+                
+                <div>
+                    <label style="display: block; color: #374151; font-weight: 600; margin-bottom: 0.5rem; font-size: 0.875rem;">
+                        Contraseña {{ '(dejar vacío para mantener)' if editing_user else '*' }}
+                    </label>
+                    <input type="password" name="password" {{ 'required' if not editing_user else '' }}
+                           placeholder="{{ 'Mínimo 6 caracteres' if not editing_user else 'Dejar vacío para no cambiar' }}"
+                           style="width: 100%; padding: 0.75rem; border: 1px solid #d1d5db; border-radius: 0.5rem; font-size: 0.875rem;">
+                    {% if editing_user %}
+                    <div style="font-size: 0.75rem; color: #6b7280; margin-top: 0.25rem;">Deja vacío para mantener la contraseña actual</div>
+                    {% endif %}
+                </div>
+            </div>
+            
+            <div style="display: flex; gap: 0.5rem; margin-top: 1.5rem;">
+                <button type="submit" style="flex: 1; background-color: #10b981; color: white; padding: 0.75rem; border: none; border-radius: 0.5rem; font-weight: 600; cursor: pointer;">
+                    {{ '💾 Guardar Cambios' if editing_user else '➕ Crear Usuario' }}
+                </button>
+                <a href="/admin/users" style="background-color: #6b7280; color: white; padding: 0.75rem; border-radius: 0.5rem; text-decoration: none; font-weight: 600; display: flex; align-items: center; justify-content: center;">
+                    Cancelar
+                </a>
+            </div>
+        </form>
+    </div>
+    {% endif %}
+
+    <!-- LISTA DE USUARIOS -->
+    <div style="background-color: white; border-radius: 0.5rem; box-shadow: 0 1px 3px rgba(0,0,0,0.1); padding: 1.5rem;">
+        <h3 style="font-size: 1.125rem; font-weight: 600; margin-bottom: 1rem; color: #1f2937;">
+            Usuarios ({{ usuarios|length }})
+        </h3>
+        
+        {% if not usuarios %}
+        <div style="text-align: center; padding: 3rem; color: #9ca3af;">
+            <div style="font-size: 48px; opacity: 0.3; margin-bottom: 1rem;">👥</div>
+            <p>No se encontraron usuarios</p>
+        </div>
+        {% else %}
+        <div style="overflow-x: auto;">
+            <table style="width: 100%; border-collapse: collapse;">
+                <thead>
+                    <tr style="background-color: #f9fafb; border-bottom: 2px solid #e5e7eb;">
+                        <th style="padding: 0.75rem; text-align: left; font-weight: 600; color: #374151; font-size: 0.875rem;">Nombre</th>
+                        <th style="padding: 0.75rem; text-align: left; font-weight: 600; color: #374151; font-size: 0.875rem;">Usuario</th>
+                        <th style="padding: 0.75rem; text-align: left; font-weight: 600; color: #374151; font-size: 0.875rem;">Rol</th>
+                        <th style="padding: 0.75rem; text-align: left; font-weight: 600; color: #374151; font-size: 0.875rem;">Estado</th>
+                        <th style="padding: 0.75rem; text-align: left; font-weight: 600; color: #374151; font-size: 0.875rem;">Fecha Creación</th>
+                        <th style="padding: 0.75rem; text-align: right; font-weight: 600; color: #374151; font-size: 0.875rem;">Acciones</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for usuario in usuarios %}
+                    <tr style="border-bottom: 1px solid #f3f4f6;">
+                        <td style="padding: 0.75rem; color: #1f2937; font-weight: 500;">{{ usuario.nombre }}</td>
+                        <td style="padding: 0.75rem; color: #6b7280; font-family: monospace;">@{{ usuario.username }}</td>
+                        <td style="padding: 0.75rem;">
+                            <span style="display: inline-block; padding: 0.25rem 0.75rem; border-radius: 0.375rem; font-size: 0.75rem; font-weight: 600; background-color: {{ '#dbeafe' if usuario.rol == 'admin' else '#fef3c7' }}; color: {{ '#1e40af' if usuario.rol == 'admin' else '#92400e' }};">
+                                {{ '👨‍💼 Admin' if usuario.rol == 'admin' else '👨‍🍳 Mesero' }}
+                            </span>
+                        </td>
+                        <td style="padding: 0.75rem;">
+                            {% if usuario.activo %}
+                            <span style="display: inline-block; padding: 0.25rem 0.75rem; border-radius: 0.375rem; font-size: 0.75rem; font-weight: 600; background-color: #d1fae5; color: #065f46;">
+                                ✅ Activo
+                            </span>
+                            {% else %}
+                            <span style="display: inline-block; padding: 0.25rem 0.75rem; border-radius: 0.375rem; font-size: 0.75rem; font-weight: 600; background-color: #fee2e2; color: #991b1b;">
+                                ❌ Inactivo
+                            </span>
+                            {% endif %}
+                        </td>
+                        <td style="padding: 0.75rem; color: #6b7280; font-size: 0.875rem;">
+                            {{ usuario.created_at.strftime('%d/%m/%Y') if usuario.created_at else 'N/A' }}
+                        </td>
+                        <td style="padding: 0.75rem; text-align: right;">
+                            <div style="display: flex; gap: 0.5rem; justify-content: flex-end;">
+                                <a href="/admin/users?action=edit&id={{ usuario.id }}"
+                                   style="padding: 0.375rem 0.75rem; background-color: #3b82f6; color: white; border-radius: 0.375rem; text-decoration: none; font-size: 0.75rem; font-weight: 600;">
+                                    ✏️ Editar
+                                </a>
+                                {% if usuario.activo %}
+                                <a href="/admin/users/delete?id={{ usuario.id }}"
+                                   onclick="return confirm('¿Desactivar este usuario?')"
+                                   style="padding: 0.375rem 0.75rem; background-color: #ef4444; color: white; border-radius: 0.375rem; text-decoration: none; font-size: 0.75rem; font-weight: 600;">
+                                    🗑️ Desactivar
+                                </a>
+                                {% else %}
+                                <a href="/admin/users/activate?id={{ usuario.id }}"
+                                   onclick="return confirm('¿Activar este usuario?')"
+                                   style="padding: 0.375rem 0.75rem; background-color: #10b981; color: white; border-radius: 0.375rem; text-decoration: none; font-size: 0.75rem; font-weight: 600;">
+                                    ✅ Activar
+                                </a>
+                                {% endif %}
+                            </div>
+                        </td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+        {% endif %}
+    </div>
+</div>
+{% endblock %}
+

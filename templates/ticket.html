@@ -1,0 +1,66 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <title>Ticket - {{ order.numero_pedido }}</title>
+    <style>
+        @media print {
+            body { margin: 0; }
+            .no-print { display: none; }
+        }
+        body { font-family: 'Courier New', monospace; width: 300px; margin: 20px auto; }
+        .ticket { border: 2px dashed #000; padding: 10px; }
+        .header { text-align: center; border-bottom: 1px dashed #000; padding-bottom: 10px; margin-bottom: 10px; }
+        .item { display: flex; justify-content: space-between; margin: 5px 0; }
+        .total { border-top: 1px dashed #000; margin-top: 10px; padding-top: 10px; font-weight: bold; }
+        .footer { text-align: center; margin-top: 10px; font-size: 12px; }
+    </style>
+</head>
+<body>
+    <div class="ticket">
+        <div class="header">
+            <h2>🌮 RESTAURANTE SAZON MEXICANO 🌮</h2>
+            <p>Sistema de Pedidos</p>
+            <p><strong>Ticket: {{ order.numero_pedido }}</strong></p>
+            <p>{{ order.fecha_hora.strftime('%d/%m/%Y %H:%M') if order.fecha_hora else '' }}</p>
+        </div>
+        
+        <div class="items">
+            {% for item in items %}
+            <div class="item">
+                <span>{{ item.producto_nombre }} x{{ item.cantidad }}</span>
+                <span>Q{{ "{:.2f}".format(item.precio * item.cantidad) }}</span>
+            </div>
+            {% endfor %}
+        </div>
+        
+        <div class="total">
+            <div class="item">
+                <span>Subtotal:</span>
+                <span>Q{{ "{:.2f}".format(order.total) }}</span>
+            </div>
+            {% if order.descuento > 0 %}
+            <div class="item" style="color: green;">
+                <span>Descuento:</span>
+                <span>-Q{{ "{:.2f}".format(order.descuento) }}</span>
+            </div>
+            {% endif %}
+            <div class="item" style="font-size: 18px;">
+                <span>TOTAL:</span>
+                <span>Q{{ "{:.2f}".format(order.total_final) }}</span>
+            </div>
+        </div>
+        
+        <div class="footer">
+            <p>¡Gracias por su compra!</p>
+            <p>Estado: {{ order.estado.upper() }}</p>
+        </div>
+    </div>
+    
+    <div class="no-print" style="text-align: center; margin-top: 20px;">
+        <button onclick="window.print()" style="padding: 10px 20px; font-size: 16px; cursor: pointer;">🖨️ Imprimir</button>
+        <button onclick="window.close()" style="padding: 10px 20px; font-size: 16px; cursor: pointer; margin-left: 10px;">✕ Cerrar</button>
+    </div>
+</body>
+</html>
+

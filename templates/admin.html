@@ -1,0 +1,1445 @@
+{% extends "base.html" %}
+
+{% block title %}Administrador - Sistema de Pedidos{% endblock %}
+
+{% block content %}
+<div class="container-fluid py-4">
+    <!-- ESTADÍSTICAS -->
+    <div class="row g-3 mb-4">
+        <div class="col-md-3">
+            <div class="card text-center border-0 shadow-sm">
+                <div class="card-body">
+                    <div class="display-4 mb-2">💰</div>
+                    <h3 class="card-title mb-1">Q{{ "{:.2f}".format(stats.ventas_totales or 0) }}</h3>
+                    <p class="text-muted small mb-0">Ventas del Día</p>
+                </div>
+            </div>
+        </div>
+        <div class="col-md-3">
+            <div class="card text-center border-0 shadow-sm">
+                <div class="card-body">
+                    <div class="display-4 mb-2">🛒</div>
+                    <h3 class="card-title mb-1">{{ stats.total_pedidos or 0 }}</h3>
+                    <p class="text-muted small mb-0">Pedidos del Día</p>
+                </div>
+            </div>
+        </div>
+        <div class="col-md-3">
+            <div class="card text-center border-0 shadow-sm">
+                <div class="card-body">
+                    <div class="display-4 mb-2">🕒</div>
+                    <h3 class="card-title mb-1">{{ stats.tiempo_promedio or 0 }} min</h3>
+                    <p class="text-muted small mb-0">Tiempo Promedio</p>
+                </div>
+            </div>
+        </div>
+        <div class="col-md-3">
+            <div class="card text-center border-0 shadow-sm">
+                <div class="card-body">
+                    <div class="display-4 mb-2">👨‍🍳</div>
+                    <h3 class="card-title mb-1">{{ stats.en_preparacion or 0 }}</h3>
+                    <p class="text-muted small mb-0">En Preparación</p>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- GESTIÓN DE PRODUCTOS -->
+    <div class="card mb-4">
+        <div class="card-header bg-white d-flex justify-content-between align-items-center">
+            <h5 class="mb-0 fw-bold">
+                <i class="bi bi-cart-plus"></i> Gestión de Productos
+            </h5>
+            <button onclick="openProductModal()" class="btn btn-success btn-sm">
+                <i class="bi bi-plus-circle"></i> Agregar Producto
+            </button>
+        </div>
+        <div class="card-body p-0">
+            <div class="table-responsive">
+                <table id="productsTable" class="table table-hover mb-0">
+                    <thead>
+                        <tr>
+                            <th>Producto</th>
+                            <th>Categoría</th>
+                            <th class="text-end">Precio</th>
+                            <th class="text-center">Estado</th>
+                            <th class="text-end">Acciones</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% for cat, items in categorias.items() %}
+                        {% for prod in items %}
+                        <tr class="product-row" data-category="{{ prod.categoria }}" data-name="{{ prod.nombre|lower }}">
+                            <td class="fw-semibold">{{ prod.nombre }}</td>
+                            <td><span class="badge bg-light text-dark">{{ prod.categoria }}</span></td>
+                            <td class="text-end fw-bold text-success">Q{{ "{:.2f}".format(prod.precio) }}</td>
+                            <td class="text-center">
+                                {% if prod.activo %}
+                                <span class="badge bg-success">✅ Activo</span>
+                                {% else %}
+                                <span class="badge bg-danger">❌ Inactivo</span>
+                                {% endif %}
+                            </td>
+                            <td class="text-end">
+                                <div class="btn-group btn-group-sm">
+                                    <button onclick='editProduct({{ prod.id }})' class="btn btn-primary">
+                                        <i class="bi bi-pencil"></i>
+                                    </button>
+                                    {% if prod.activo %}
+                                    <button onclick='deleteProduct({{ prod.id }})' class="btn btn-danger">
+                                        <i class="bi bi-trash"></i>
+                                    </button>
+                                    {% else %}
+                                    <button onclick='activateProduct({{ prod.id }})' class="btn btn-success">
+                                        <i class="bi bi-check-circle"></i>
+                                    </button>
+                                    {% endif %}
+                                </div>
+                            </td>
+                        </tr>
+                        {% endfor %}
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+
+    <!-- MODAL DE PRODUCTO -->
+    <div class="modal fade" id="productModal" tabindex="-1" aria-labelledby="productModalTitle" aria-hidden="true">
+        <div class="modal-dialog modal-dialog-centered">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h5 class="modal-title fw-bold" id="productModalTitle">
+                        <i class="bi bi-plus-circle"></i> Agregar Producto
+                    </h5>
+                    <button type="button" class="btn-close" onclick="closeProductModal()" aria-label="Close"></button>
+                </div>
+                <form id="productForm" onsubmit="saveProduct(event)">
+                    <div class="modal-body">
+                        <input type="hidden" id="productId" name="id">
+                        
+                        <div class="mb-3">
+                            <label for="productNombre" class="form-label">
+                                Nombre del Producto <span class="text-danger">*</span>
+                            </label>
+                            <input type="text" class="form-control" id="productNombre" name="nombre" required
+                                   placeholder="Ej: Hamburguesa Especial">
+                        </div>
+                        
+                        <div class="mb-3">
+                            <label for="productPrecio" class="form-label">
+                                Precio (Q) <span class="text-danger">*</span>
+                            </label>
+                            <input type="number" class="form-control" id="productPrecio" name="precio" required 
+                                   step="0.01" min="0.01" placeholder="0.00">
+                        </div>
+                        
+                        <div class="mb-3">
+                            <label for="productCategoria" class="form-label">
+                                Categoría <span class="text-danger">*</span>
+                            </label>
+                            <select class="form-select" id="productCategoria" name="categoria" required>
+                                <option value="">Seleccionar categoría</option>
+                                <option value="Hamburguesas">🍔 Hamburguesas</option>
+                                <option value="Hot Dogs">🌭 Hot Dogs</option>
+                                <option value="Bebidas">🥤 Bebidas</option>
+                                <option value="Acompañamientos">🍟 Acompañamientos</option>
+                                <option value="Tacos">🌮 Tacos</option>
+                                <option value="Mexicanos">🇲🇽 Mexicanos</option>
+                                <option value="Postres">🍰 Postres</option>
+                                <option value="Ensaladas">🥗 Ensaladas</option>
+                            </select>
+                        </div>
+                    </div>
+                    <div class="modal-footer">
+                        <button type="button" class="btn btn-secondary" onclick="closeProductModal()">Cancelar</button>
+                        <button type="submit" class="btn btn-success">
+                            <i class="bi bi-save"></i> Guardar
+                        </button>
+                    </div>
+                </form>
+            </div>
+        </div>
+    </div>
+
+    <!-- PEDIDOS RECIENTES -->
+    <div class="row g-3 mb-4">
+        <div class="col-md-12">
+            <div class="card">
+                <div class="card-header bg-white">
+                    <h5 class="mb-0 fw-bold">
+                        <i class="bi bi-clock-history"></i> Pedidos Recientes
+                    </h5>
+                </div>
+                <div class="card-body">
+                    <div class="list-group list-group-flush">
+                        {% for order in recent_orders %}
+                        <div class="list-group-item d-flex justify-content-between align-items-center">
+                            <div>
+                                <h6 class="mb-1 fw-bold">{{ order.numero_pedido }}</h6>
+                                <small class="text-muted">
+                                    <i class="bi bi-calendar"></i> {{ order.fecha_hora.strftime('%d/%m/%Y %H:%M') if order.fecha_hora else '' }}
+                                </small>
+                            </div>
+                            <div class="text-end">
+                                <div class="fw-bold text-success mb-1">Q{{ "{:.2f}".format(order.total_final) }}</div>
+                                {% if order.estado == 'pending' %}
+                                <span class="badge bg-warning text-dark">{{ order.estado.upper() }}</span>
+                                {% elif order.estado == 'preparing' %}
+                                <span class="badge bg-info">{{ order.estado.upper() }}</span>
+                                {% elif order.estado == 'ready' %}
+                                <span class="badge bg-success">{{ order.estado.upper() }}</span>
+                                {% else %}
+                                <span class="badge bg-secondary">{{ order.estado.upper() }}</span>
+                                {% endif %}
+                            </div>
+                        </div>
+                        {% endfor %}
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+    
+    <!-- GESTIÓN DE USUARIOS -->
+    <div class="card mb-4">
+        <div class="card-header bg-white d-flex justify-content-between align-items-center">
+            <h5 class="mb-0 fw-bold">
+                <i class="bi bi-people"></i> Gestión de Usuarios
+            </h5>
+            <button onclick="openUserModal()" class="btn btn-success btn-sm">
+                <i class="bi bi-person-plus"></i> Agregar Usuario
+            </button>
+        </div>
+        <div class="card-body p-0">
+            <div class="table-responsive">
+                <table id="usersTable" class="table table-hover mb-0">
+                    <thead>
+                        <tr>
+                            <th>Nombre</th>
+                            <th>Usuario</th>
+                            <th class="text-center">Rol</th>
+                            <th class="text-center">Estado</th>
+                            <th class="text-end">Acciones</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% for usuario in usuarios %}
+                        <tr class="user-row" data-name="{{ usuario.nombre|lower }}" data-username="{{ usuario.username|lower }}">
+                            <td class="fw-semibold">{{ usuario.nombre }}</td>
+                            <td><code class="text-muted">@{{ usuario.username }}</code></td>
+                            <td class="text-center">
+                                {% if usuario.rol == 'admin' %}
+                                <span class="badge bg-primary"><i class="bi bi-person-badge"></i> Admin</span>
+                                {% else %}
+                                <span class="badge bg-warning text-dark"><i class="bi bi-person"></i> Mesero</span>
+                                {% endif %}
+                            </td>
+                            <td class="text-center">
+                                {% if usuario.activo %}
+                                <span class="badge bg-success">✅ Activo</span>
+                                {% else %}
+                                <span class="badge bg-danger">❌ Inactivo</span>
+                                {% endif %}
+                            </td>
+                            <td class="text-end">
+                                <div class="btn-group btn-group-sm">
+                                    <button onclick='editUser({{ usuario.id }})' class="btn btn-primary">
+                                        <i class="bi bi-pencil"></i>
+                                    </button>
+                                    {% if usuario.activo %}
+                                    <button onclick='deleteUser({{ usuario.id }})' class="btn btn-danger">
+                                        <i class="bi bi-trash"></i>
+                                    </button>
+                                    {% else %}
+                                    <button onclick='activateUser({{ usuario.id }})' class="btn btn-success">
+                                        <i class="bi bi-check-circle"></i>
+                                    </button>
+                                    {% endif %}
+                                </div>
+                            </td>
+                        </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+
+    <!-- MODAL DE USUARIO -->
+    <div class="modal fade" id="userModal" tabindex="-1" aria-labelledby="userModalTitle" aria-hidden="true">
+        <div class="modal-dialog modal-dialog-centered">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h5 class="modal-title fw-bold" id="userModalTitle">
+                        <i class="bi bi-person-plus"></i> Agregar Usuario
+                    </h5>
+                    <button type="button" class="btn-close" onclick="closeUserModal()" aria-label="Close"></button>
+                </div>
+                <form id="userForm" onsubmit="saveUser(event)">
+                    <div class="modal-body">
+                        <input type="hidden" id="userId" name="id">
+                        
+                        <div class="mb-3">
+                            <label for="userNombre" class="form-label">
+                                Nombre Completo <span class="text-danger">*</span>
+                            </label>
+                            <input type="text" class="form-control" id="userNombre" name="nombre" required
+                                   placeholder="Ej: Juan Pérez">
+                        </div>
+                        
+                        <div class="mb-3">
+                            <label for="userUsername" class="form-label">
+                                Usuario <span class="text-danger">*</span>
+                            </label>
+                            <input type="text" class="form-control" id="userUsername" name="username" required
+                                   placeholder="Ej: jperez">
+                        </div>
+                        
+                        <div class="mb-3">
+                            <label for="userPassword" class="form-label">
+                                Contraseña <span id="passwordRequired" class="text-danger">*</span>
+                            </label>
+                            <input type="password" class="form-control" id="userPassword" name="password"
+                                   placeholder="Mínimo 6 caracteres">
+                            <small id="passwordHint" class="form-text text-muted"></small>
+                        </div>
+                        
+                        <div class="mb-3">
+                            <label for="userRol" class="form-label">
+                                Rol <span class="text-danger">*</span>
+                            </label>
+                            <select class="form-select" id="userRol" name="rol" required>
+                                <option value="">Seleccionar rol</option>
+                                <option value="admin"><i class="bi bi-person-badge"></i> Administrador</option>
+                                <option value="mesero"><i class="bi bi-person"></i> Mesero</option>
+                            </select>
+                        </div>
+                    </div>
+                    <div class="modal-footer">
+                        <button type="button" class="btn btn-secondary" onclick="closeUserModal()">Cancelar</button>
+                        <button type="submit" class="btn btn-success">
+                            <i class="bi bi-save"></i> Guardar
+                        </button>
+                    </div>
+                </form>
+            </div>
+        </div>
+    </div>
+
+    <!-- GESTIÓN DE DESCUENTOS -->
+    <div class="card mb-4">
+        <div class="card-header bg-white d-flex justify-content-between align-items-center">
+            <h5 class="mb-0 fw-bold">
+                <i class="bi bi-tag"></i> Gestión de Descuentos
+            </h5>
+            <button onclick="openDiscountModal()" class="btn btn-warning btn-sm">
+                <i class="bi bi-plus-circle"></i> Agregar Descuento
+            </button>
+        </div>
+        <div class="card-body p-0">
+            <div class="table-responsive">
+                <table id="discountsTable" class="table table-hover mb-0">
+                    <thead>
+                        <tr>
+                            <th>Código</th>
+                            <th>Tipo</th>
+                            <th class="text-end">Valor</th>
+                            <th class="text-center">Estado</th>
+                            <th class="text-end">Acciones</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% for desc in descuentos %}
+                        <tr class="discount-row" data-code="{{ desc.codigo|lower }}">
+                            <td class="fw-bold"><code>{{ desc.codigo }}</code></td>
+                            <td>
+                                {% if desc.tipo == 'porcentaje' %}
+                                <span class="badge bg-info"><i class="bi bi-percent"></i> Porcentaje</span>
+                                {% else %}
+                                <span class="badge bg-warning text-dark"><i class="bi bi-currency-dollar"></i> Fijo</span>
+                                {% endif %}
+                            </td>
+                            <td class="text-end fw-bold text-success">
+                                {{ (desc.valor|string + '%') if desc.tipo == 'porcentaje' else ('Q' + "{:.2f}".format(desc.valor)) }}
+                            </td>
+                            <td class="text-center">
+                                {% if desc.activo %}
+                                <span class="badge bg-success">✅ Activo</span>
+                                {% else %}
+                                <span class="badge bg-danger">❌ Inactivo</span>
+                                {% endif %}
+                            </td>
+                            <td class="text-end">
+                                <div class="btn-group btn-group-sm">
+                                    <button onclick='editDiscount({{ desc.id }})' class="btn btn-primary">
+                                        <i class="bi bi-pencil"></i>
+                                    </button>
+                                    {% if desc.activo %}
+                                    <button onclick='deleteDiscount({{ desc.id }})' class="btn btn-danger">
+                                        <i class="bi bi-trash"></i>
+                                    </button>
+                                    {% else %}
+                                    <button onclick='activateDiscount({{ desc.id }})' class="btn btn-success">
+                                        <i class="bi bi-check-circle"></i>
+                                    </button>
+                                    {% endif %}
+                                </div>
+                            </td>
+                        </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+
+    <!-- REPORTES -->
+    <div class="card mb-4">
+        <div class="card-header bg-white">
+            <h5 class="mb-0 fw-bold">
+                <i class="bi bi-graph-up"></i> Reportes
+            </h5>
+        </div>
+        <div class="card-body">
+            <div class="row g-3">
+                <div class="col-md-6">
+                    <button onclick="openReportModal('sales-day')" class="btn btn-primary w-100">
+                        <i class="bi bi-cash-stack"></i> Ventas del Día
+                    </button>
+                </div>
+                <div class="col-md-6">
+                    <button onclick="openReportModal('top-products')" class="btn btn-info w-100 text-white">
+                        <i class="bi bi-trophy"></i> Productos Más Vendidos
+                    </button>
+                </div>
+                <div class="col-md-6">
+                    <button onclick="openReportModal('sales-range')" class="btn btn-success w-100">
+                        <i class="bi bi-calendar-range"></i> Reporte por Rango
+                    </button>
+                </div>
+                <div class="col-md-6">
+                    <button onclick="openReportModal('categories')" class="btn btn-warning w-100">
+                        <i class="bi bi-folder"></i> Por Categorías
+                    </button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- MODAL DE DESCUENTO -->
+    <div class="modal fade" id="discountModal" tabindex="-1" aria-labelledby="discountModalTitle" aria-hidden="true">
+        <div class="modal-dialog modal-dialog-centered">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h5 class="modal-title fw-bold" id="discountModalTitle">
+                        <i class="bi bi-tag"></i> Agregar Descuento
+                    </h5>
+                    <button type="button" class="btn-close" onclick="closeDiscountModal()" aria-label="Close"></button>
+                </div>
+                <form id="discountForm" onsubmit="saveDiscount(event)">
+                    <div class="modal-body">
+                        <input type="hidden" id="discountId" name="id">
+                        
+                        <div class="mb-3">
+                            <label for="discountCodigo" class="form-label">
+                                Código <span class="text-danger">*</span>
+                            </label>
+                            <input type="text" class="form-control text-uppercase" id="discountCodigo" name="codigo" required
+                                   placeholder="Ej: DESCUENTO10">
+                        </div>
+                        
+                        <div class="mb-3">
+                            <label for="discountTipo" class="form-label">
+                                Tipo <span class="text-danger">*</span>
+                            </label>
+                            <select class="form-select" id="discountTipo" name="tipo" required>
+                                <option value="">Seleccionar tipo</option>
+                                <option value="porcentaje"><i class="bi bi-percent"></i> Porcentaje</option>
+                                <option value="fijo"><i class="bi bi-currency-dollar"></i> Fijo</option>
+                            </select>
+                        </div>
+                        
+                        <div class="mb-3">
+                            <label for="discountValor" class="form-label">
+                                Valor <span class="text-danger">*</span>
+                            </label>
+                            <input type="number" class="form-control" id="discountValor" name="valor" required 
+                                   step="0.01" min="0.01" placeholder="Ej: 10 o 15.50">
+                            <small id="valorHint" class="form-text text-muted"></small>
+                        </div>
+                    </div>
+                    <div class="modal-footer">
+                        <button type="button" class="btn btn-secondary" onclick="closeDiscountModal()">Cancelar</button>
+                        <button type="submit" class="btn btn-warning">
+                            <i class="bi bi-save"></i> Guardar
+                        </button>
+                    </div>
+                </form>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_css %}
+<link rel="stylesheet" type="text/css" href="https://cdn.datatables.net/1.13.7/css/dataTables.bootstrap5.min.css">
+<style>
+.dataTables_wrapper .dataTables_filter input {
+    margin-left: 0.5rem;
+    padding: 0.5rem;
+    border: 1px solid #dee2e6;
+    border-radius: 0.5rem;
+}
+.dataTables_wrapper .dataTables_length select {
+    padding: 0.5rem;
+    border: 1px solid #dee2e6;
+    border-radius: 0.5rem;
+    margin: 0 0.5rem;
+}
+.dataTables_wrapper .dataTables_paginate .page-item.active .page-link {
+    background: linear-gradient(135deg, var(--primary-color) 0%, var(--primary-hover) 100%);
+    border-color: var(--primary-color);
+}
+.dataTables_wrapper .dataTables_paginate .page-link {
+    color: var(--primary-color);
+    border-radius: 0.5rem;
+    margin: 0 0.25rem;
+}
+.dataTables_wrapper .dataTables_paginate .page-link:hover {
+    background-color: var(--primary-color);
+    color: white;
+}
+</style>
+{% endblock %}
+
+{% block extra_js %}
+<script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
+<script src="https://code.jquery.com/jquery-3.7.1.min.js"></script>
+<script src="https://cdn.datatables.net/1.13.7/js/jquery.dataTables.min.js"></script>
+<script src="https://cdn.datatables.net/1.13.7/js/dataTables.bootstrap5.min.js"></script>
+<script>
+let currentUserId = null;
+
+function openUserModal(userId = null) {
+    currentUserId = userId;
+    const modalElement = document.getElementById('userModal');
+    const modal = new bootstrap.Modal(modalElement);
+    const form = document.getElementById('userForm');
+    const modalTitle = document.getElementById('userModalTitle');
+    const passwordField = document.getElementById('userPassword');
+    const passwordHint = document.getElementById('passwordHint');
+    const passwordRequired = document.getElementById('passwordRequired');
+    
+    if (userId) {
+        modalTitle.innerHTML = '<i class="bi bi-pencil"></i> Editar Usuario';
+        passwordRequired.style.display = 'none';
+        passwordHint.textContent = 'Deja vacío para mantener la contraseña actual';
+        passwordField.required = false;
+        
+        fetch(`/api/users/${userId}`)
+            .then(res => res.json())
+            .then(data => {
+                if (data.success) {
+                    document.getElementById('userId').value = data.user.id;
+                    document.getElementById('userNombre').value = data.user.nombre;
+                    document.getElementById('userUsername').value = data.user.username;
+                    document.getElementById('userRol').value = data.user.rol;
+                    modal.show();
+                } else {
+                    Swal.fire('Error', data.error || 'No se pudo cargar el usuario', 'error');
+                }
+            });
+    } else {
+        modalTitle.innerHTML = '<i class="bi bi-person-plus"></i> Agregar Usuario';
+        form.reset();
+        document.getElementById('userId').value = '';
+        passwordRequired.style.display = 'inline';
+        passwordHint.textContent = '';
+        passwordField.required = true;
+        modal.show();
+    }
+}
+
+function closeUserModal() {
+    const modalElement = document.getElementById('userModal');
+    const modal = bootstrap.Modal.getInstance(modalElement);
+    if (modal) {
+        modal.hide();
+    }
+    currentUserId = null;
+}
+
+function saveUser(event) {
+    event.preventDefault();
+    const form = event.target;
+    const formData = new FormData(form);
+    const userId = formData.get('id');
+    
+    const url = userId ? `/api/users/${userId}` : '/api/users';
+    const method = userId ? 'PUT' : 'POST';
+    
+    fetch(url, {
+        method: method,
+        body: formData
+    })
+    .then(res => res.json())
+    .then(data => {
+        if (data.success) {
+            Swal.fire('¡Éxito!', data.message, 'success').then(() => {
+                closeUserModal();
+                window.location.reload();
+            });
+        } else {
+            Swal.fire('Error', data.error || 'No se pudo guardar el usuario', 'error');
+        }
+    })
+    .catch(error => {
+        Swal.fire('Error', 'Error al procesar la solicitud', 'error');
+    });
+}
+
+function editUser(userId) {
+    openUserModal(userId);
+}
+
+function deleteUser(userId) {
+    Swal.fire({
+        title: '¿Desactivar usuario?',
+        text: 'El usuario será desactivado y no podrá iniciar sesión',
+        icon: 'warning',
+        showCancelButton: true,
+        confirmButtonColor: '#ef4444',
+        cancelButtonColor: '#6b7280',
+        confirmButtonText: 'Sí, desactivar',
+        cancelButtonText: 'Cancelar'
+    }).then((result) => {
+        if (result.isConfirmed) {
+            fetch(`/api/users/${userId}`, {
+                method: 'DELETE'
+            })
+            .then(res => res.json())
+            .then(data => {
+                if (data.success) {
+                    Swal.fire('¡Desactivado!', data.message, 'success').then(() => {
+                        window.location.reload();
+                    });
+                } else {
+                    Swal.fire('Error', data.error || 'No se pudo desactivar el usuario', 'error');
+                }
+            });
+        }
+    });
+}
+
+function activateUser(userId) {
+    Swal.fire({
+        title: '¿Activar usuario?',
+        text: 'El usuario podrá iniciar sesión nuevamente',
+        icon: 'question',
+        showCancelButton: true,
+        confirmButtonColor: '#10b981',
+        cancelButtonColor: '#6b7280',
+        confirmButtonText: 'Sí, activar',
+        cancelButtonText: 'Cancelar'
+    }).then((result) => {
+        if (result.isConfirmed) {
+            fetch(`/api/users/${userId}/activate`, {
+                method: 'POST'
+            })
+            .then(res => res.json())
+            .then(data => {
+                if (data.success) {
+                    Swal.fire('¡Activado!', data.message, 'success').then(() => {
+                        window.location.reload();
+                    });
+                } else {
+                    Swal.fire('Error', data.error || 'No se pudo activar el usuario', 'error');
+                }
+            });
+        }
+    });
+}
+
+// Cerrar modal al hacer clic fuera
+document.getElementById('userModal').addEventListener('click', function(e) {
+    if (e.target === this) {
+        closeUserModal();
+    }
+});
+
+// ========================================
+// FUNCIONES DE PRODUCTOS
+// ========================================
+let currentProductId = null;
+
+function openProductModal(productId = null) {
+    currentProductId = productId;
+    const modalElement = document.getElementById('productModal');
+    const modal = new bootstrap.Modal(modalElement);
+    const form = document.getElementById('productForm');
+    const modalTitle = document.getElementById('productModalTitle');
+    
+    if (productId) {
+        modalTitle.innerHTML = '<i class="bi bi-pencil"></i> Editar Producto';
+        
+        fetch(`/api/products/${productId}`)
+            .then(res => res.json())
+            .then(data => {
+                if (data.success) {
+                    document.getElementById('productId').value = data.product.id;
+                    document.getElementById('productNombre').value = data.product.nombre;
+                    document.getElementById('productPrecio').value = data.product.precio;
+                    document.getElementById('productCategoria').value = data.product.categoria;
+                    modal.show();
+                } else {
+                    Swal.fire('Error', data.error || 'No se pudo cargar el producto', 'error');
+                }
+            });
+    } else {
+        modalTitle.innerHTML = '<i class="bi bi-plus-circle"></i> Agregar Producto';
+        form.reset();
+        document.getElementById('productId').value = '';
+        modal.show();
+    }
+}
+
+function closeProductModal() {
+    const modalElement = document.getElementById('productModal');
+    const modal = bootstrap.Modal.getInstance(modalElement);
+    if (modal) {
+        modal.hide();
+    }
+    currentProductId = null;
+}
+
+function saveProduct(event) {
+    event.preventDefault();
+    const form = event.target;
+    const formData = new FormData(form);
+    const productId = formData.get('id');
+    
+    const url = productId ? `/api/products/${productId}` : '/api/products';
+    const method = productId ? 'PUT' : 'POST';
+    
+    fetch(url, {
+        method: method,
+        body: formData
+    })
+    .then(res => res.json())
+    .then(data => {
+        if (data.success) {
+            Swal.fire('¡Éxito!', data.message, 'success').then(() => {
+                closeProductModal();
+                window.location.reload();
+            });
+        } else {
+            Swal.fire('Error', data.error || 'No se pudo guardar el producto', 'error');
+        }
+    })
+    .catch(error => {
+        Swal.fire('Error', 'Error al procesar la solicitud', 'error');
+    });
+}
+
+function editProduct(productId) {
+    openProductModal(productId);
+}
+
+function deleteProduct(productId) {
+    Swal.fire({
+        title: '¿Desactivar producto?',
+        text: 'El producto será desactivado y no aparecerá en el menú',
+        icon: 'warning',
+        showCancelButton: true,
+        confirmButtonColor: '#ef4444',
+        cancelButtonColor: '#6b7280',
+        confirmButtonText: 'Sí, desactivar',
+        cancelButtonText: 'Cancelar'
+    }).then((result) => {
+        if (result.isConfirmed) {
+            fetch(`/api/products/${productId}`, {
+                method: 'DELETE'
+            })
+            .then(res => res.json())
+            .then(data => {
+                if (data.success) {
+                    Swal.fire('¡Desactivado!', data.message, 'success').then(() => {
+                        window.location.reload();
+                    });
+                } else {
+                    Swal.fire('Error', data.error || 'No se pudo desactivar el producto', 'error');
+                }
+            });
+        }
+    });
+}
+
+function activateProduct(productId) {
+    Swal.fire({
+        title: '¿Activar producto?',
+        text: 'El producto aparecerá nuevamente en el menú',
+        icon: 'question',
+        showCancelButton: true,
+        confirmButtonColor: '#10b981',
+        cancelButtonColor: '#6b7280',
+        confirmButtonText: 'Sí, activar',
+        cancelButtonText: 'Cancelar'
+    }).then((result) => {
+        if (result.isConfirmed) {
+            fetch(`/api/products/${productId}/activate`, {
+                method: 'POST'
+            })
+            .then(res => res.json())
+            .then(data => {
+                if (data.success) {
+                    Swal.fire('¡Activado!', data.message, 'success').then(() => {
+                        window.location.reload();
+                    });
+                } else {
+                    Swal.fire('Error', data.error || 'No se pudo activar el producto', 'error');
+                }
+            });
+        }
+    });
+}
+
+// Inicializar DataTables cuando la página cargue
+document.addEventListener('DOMContentLoaded', function() {
+    // DataTable para productos
+    if ($('#productsTable').length) {
+        $('#productsTable').DataTable({
+            language: {
+                search: "Buscar:",
+                lengthMenu: "Mostrar _MENU_ productos por página",
+                info: "Mostrando _START_ a _END_ de _TOTAL_ productos",
+                infoEmpty: "No hay productos",
+                infoFiltered: "(filtrado de _MAX_ productos totales)",
+                paginate: {
+                    first: "Primero",
+                    last: "Último",
+                    next: "Siguiente",
+                    previous: "Anterior"
+                },
+                zeroRecords: "No se encontraron productos"
+            },
+            pageLength: 10,
+            order: [[0, 'asc']],
+            responsive: true,
+            columnDefs: [
+                { orderable: false, targets: 4 } // Deshabilitar ordenamiento en columna de acciones
+            ]
+        });
+    }
+    
+    // DataTable para usuarios
+    if ($('#usersTable').length) {
+        $('#usersTable').DataTable({
+            language: {
+                search: "Buscar:",
+                lengthMenu: "Mostrar _MENU_ usuarios por página",
+                info: "Mostrando _START_ a _END_ de _TOTAL_ usuarios",
+                infoEmpty: "No hay usuarios",
+                infoFiltered: "(filtrado de _MAX_ usuarios totales)",
+                paginate: {
+                    first: "Primero",
+                    last: "Último",
+                    next: "Siguiente",
+                    previous: "Anterior"
+                },
+                zeroRecords: "No se encontraron usuarios"
+            },
+            pageLength: 10,
+            order: [[0, 'asc']],
+            responsive: true,
+            columnDefs: [
+                { orderable: false, targets: 4 } // Deshabilitar ordenamiento en columna de acciones
+            ]
+        });
+    }
+    
+    // DataTable para descuentos
+    if ($('#discountsTable').length) {
+        $('#discountsTable').DataTable({
+            language: {
+                search: "Buscar:",
+                lengthMenu: "Mostrar _MENU_ descuentos por página",
+                info: "Mostrando _START_ a _END_ de _TOTAL_ descuentos",
+                infoEmpty: "No hay descuentos",
+                infoFiltered: "(filtrado de _MAX_ descuentos totales)",
+                paginate: {
+                    first: "Primero",
+                    last: "Último",
+                    next: "Siguiente",
+                    previous: "Anterior"
+                },
+                zeroRecords: "No se encontraron descuentos"
+            },
+            pageLength: 10,
+            order: [[0, 'asc']],
+            responsive: true,
+            columnDefs: [
+                { orderable: false, targets: 4 } // Deshabilitar ordenamiento en columna de acciones
+            ]
+        });
+    }
+    
+    // Actualizar hint del valor según el tipo
+    $('#discountTipo').on('change', function() {
+        const tipo = $(this).val();
+        const hint = $('#valorHint');
+        if (tipo === 'porcentaje') {
+            hint.text('Ingresa un porcentaje (ej: 10 para 10%, máximo 100)');
+            $('#discountValor').attr('max', '100');
+        } else if (tipo === 'fijo') {
+            hint.text('Ingresa una cantidad fija en quetzales (ej: 15.50)');
+            $('#discountValor').removeAttr('max');
+        } else {
+            hint.text('');
+        }
+    });
+});
+
+// Limpiar modal cuando se oculta
+document.getElementById('productModal').addEventListener('hidden.bs.modal', function () {
+    document.getElementById('productForm').reset();
+    currentProductId = null;
+});
+
+// ========================================
+// FUNCIONES DE DESCUENTOS
+// ========================================
+let currentDiscountId = null;
+
+function openDiscountModal(discountId = null) {
+    currentDiscountId = discountId;
+    const modalElement = document.getElementById('discountModal');
+    const modal = new bootstrap.Modal(modalElement);
+    const form = document.getElementById('discountForm');
+    const modalTitle = document.getElementById('discountModalTitle');
+    const valorHint = document.getElementById('valorHint');
+    
+    if (discountId) {
+        modalTitle.innerHTML = '<i class="bi bi-pencil"></i> Editar Descuento';
+        
+        fetch(`/api/discounts/${discountId}`)
+            .then(res => res.json())
+            .then(data => {
+                if (data.success) {
+                    document.getElementById('discountId').value = data.discount.id;
+                    document.getElementById('discountCodigo').value = data.discount.codigo;
+                    document.getElementById('discountTipo').value = data.discount.tipo;
+                    document.getElementById('discountValor').value = data.discount.valor;
+                    
+                    // Actualizar hint
+                    if (data.discount.tipo === 'porcentaje') {
+                        valorHint.textContent = 'Ingresa un porcentaje (ej: 10 para 10%, máximo 100)';
+                        document.getElementById('discountValor').setAttribute('max', '100');
+                    } else {
+                        valorHint.textContent = 'Ingresa una cantidad fija en quetzales (ej: 15.50)';
+                        document.getElementById('discountValor').removeAttribute('max');
+                    }
+                    modal.show();
+                } else {
+                    Swal.fire('Error', data.error || 'No se pudo cargar el descuento', 'error');
+                }
+            });
+    } else {
+        modalTitle.innerHTML = '<i class="bi bi-tag"></i> Agregar Descuento';
+        form.reset();
+        document.getElementById('discountId').value = '';
+        valorHint.textContent = '';
+        document.getElementById('discountValor').removeAttribute('max');
+        modal.show();
+    }
+}
+
+function closeDiscountModal() {
+    const modalElement = document.getElementById('discountModal');
+    const modal = bootstrap.Modal.getInstance(modalElement);
+    if (modal) {
+        modal.hide();
+    }
+    currentDiscountId = null;
+}
+
+function saveDiscount(event) {
+    event.preventDefault();
+    const form = event.target;
+    const formData = new FormData(form);
+    const discountId = formData.get('id');
+    
+    const url = discountId ? `/api/discounts/${discountId}` : '/api/discounts';
+    const method = discountId ? 'PUT' : 'POST';
+    
+    fetch(url, {
+        method: method,
+        body: formData
+    })
+    .then(res => res.json())
+    .then(data => {
+        if (data.success) {
+            Swal.fire('¡Éxito!', data.message, 'success').then(() => {
+                closeDiscountModal();
+                window.location.reload();
+            });
+        } else {
+            Swal.fire('Error', data.error || 'No se pudo guardar el descuento', 'error');
+        }
+    })
+    .catch(error => {
+        Swal.fire('Error', 'Error al procesar la solicitud', 'error');
+    });
+}
+
+function editDiscount(discountId) {
+    openDiscountModal(discountId);
+}
+
+function deleteDiscount(discountId) {
+    Swal.fire({
+        title: '¿Desactivar descuento?',
+        text: 'El descuento será desactivado y no podrá ser usado',
+        icon: 'warning',
+        showCancelButton: true,
+        confirmButtonColor: '#ef4444',
+        cancelButtonColor: '#6b7280',
+        confirmButtonText: 'Sí, desactivar',
+        cancelButtonText: 'Cancelar'
+    }).then((result) => {
+        if (result.isConfirmed) {
+            fetch(`/api/discounts/${discountId}`, {
+                method: 'DELETE'
+            })
+            .then(res => res.json())
+            .then(data => {
+                if (data.success) {
+                    Swal.fire('¡Desactivado!', data.message, 'success').then(() => {
+                        window.location.reload();
+                    });
+                } else {
+                    Swal.fire('Error', data.error || 'No se pudo desactivar el descuento', 'error');
+                }
+            });
+        }
+    });
+}
+
+function activateDiscount(discountId) {
+    Swal.fire({
+        title: '¿Activar descuento?',
+        text: 'El descuento podrá ser usado nuevamente',
+        icon: 'question',
+        showCancelButton: true,
+        confirmButtonColor: '#10b981',
+        cancelButtonColor: '#6b7280',
+        confirmButtonText: 'Sí, activar',
+        cancelButtonText: 'Cancelar'
+    }).then((result) => {
+        if (result.isConfirmed) {
+            fetch(`/api/discounts/${discountId}/activate`, {
+                method: 'POST'
+            })
+            .then(res => res.json())
+            .then(data => {
+                if (data.success) {
+                    Swal.fire('¡Activado!', data.message, 'success').then(() => {
+                        window.location.reload();
+                    });
+                } else {
+                    Swal.fire('Error', data.error || 'No se pudo activar el descuento', 'error');
+                }
+            });
+        }
+    });
+}
+
+// Limpiar modales cuando se ocultan
+document.getElementById('userModal').addEventListener('hidden.bs.modal', function () {
+    document.getElementById('userForm').reset();
+    currentUserId = null;
+});
+
+document.getElementById('discountModal').addEventListener('hidden.bs.modal', function () {
+    document.getElementById('discountForm').reset();
+    currentDiscountId = null;
+});
+
+// FUNCIONES DE REPORTES
+// ========================================
+function openReportModal(reportType) {
+    switch(reportType) {
+        case 'sales-day':
+            generateSalesDayReport();
+            break;
+        case 'top-products':
+            generateTopProductsReport();
+            break;
+        case 'sales-range':
+            showSalesRangeForm();
+            break;
+        case 'categories':
+            generateCategoriesReport();
+            break;
+    }
+}
+
+function generateSalesDayReport() {
+    const today = new Date().toISOString().split('T')[0];
+    
+    Swal.fire({
+        title: 'Ventas del Día',
+        html: `
+            <div style="text-align: left; margin-top: 1rem;">
+                <label style="display: block; margin-bottom: 0.5rem; font-weight: 600;">Fecha:</label>
+                <input type="date" id="salesDayDate" value="${today}" style="width: 100%; padding: 0.5rem; border: 1px solid #d1d5db; border-radius: 0.375rem;">
+            </div>
+        `,
+        showCancelButton: true,
+        confirmButtonText: 'Generar Reporte',
+        cancelButtonText: 'Cancelar',
+        confirmButtonColor: '#8b5cf6',
+        preConfirm: () => {
+            const date = document.getElementById('salesDayDate').value;
+            if (!date) {
+                Swal.showValidationMessage('Por favor selecciona una fecha');
+                return false;
+            }
+            return date;
+        }
+    }).then((result) => {
+        if (result.isConfirmed && result.value) {
+            const selectedDate = result.value;
+            fetch(`/api/reports/sales-day?date=${selectedDate}`)
+                .then(res => res.json())
+                .then(data => {
+                    if (data.success) {
+                        const stats = data.stats;
+                        const ordersHtml = data.orders.slice(0, 10).map(order => `
+                            <tr>
+                                <td>${order.numero_pedido}</td>
+                                <td>Q${parseFloat(order.total_final).toFixed(2)}</td>
+                                <td>${order.estado}</td>
+                            </tr>
+                        `).join('');
+                        
+                        Swal.fire({
+                            title: `📊 Ventas del ${data.date}`,
+                            html: `
+                                <div style="text-align: left; margin-top: 1rem;">
+                                    <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 1rem; margin-bottom: 1rem;">
+                                        <div style="background: #f3f4f6; padding: 1rem; border-radius: 0.5rem;">
+                                            <div style="color: #6b7280; font-size: 0.875rem;">Total Pedidos</div>
+                                            <div style="font-size: 1.5rem; font-weight: bold; color: #1f2937;">${stats.total_pedidos}</div>
+                                        </div>
+                                        <div style="background: #f3f4f6; padding: 1rem; border-radius: 0.5rem;">
+                                            <div style="color: #6b7280; font-size: 0.875rem;">Ventas Totales</div>
+                                            <div style="font-size: 1.5rem; font-weight: bold; color: #10b981;">Q${parseFloat(stats.ventas_totales).toFixed(2)}</div>
+                                        </div>
+                                        <div style="background: #f3f4f6; padding: 1rem; border-radius: 0.5rem;">
+                                            <div style="color: #6b7280; font-size: 0.875rem;">Ticket Promedio</div>
+                                            <div style="font-size: 1.5rem; font-weight: bold; color: #3b82f6;">Q${parseFloat(stats.ticket_promedio).toFixed(2)}</div>
+                                        </div>
+                                        <div style="background: #f3f4f6; padding: 1rem; border-radius: 0.5rem;">
+                                            <div style="color: #6b7280; font-size: 0.875rem;">Descuentos</div>
+                                            <div style="font-size: 1.5rem; font-weight: bold; color: #f59e0b;">Q${parseFloat(stats.total_descuentos).toFixed(2)}</div>
+                                        </div>
+                                    </div>
+                                    <div style="max-height: 300px; overflow-y: auto;">
+                                        <table style="width: 100%; border-collapse: collapse; font-size: 0.875rem;">
+                                            <thead>
+                                                <tr style="background: #f9fafb; border-bottom: 2px solid #e5e7eb;">
+                                                    <th style="padding: 0.5rem; text-align: left;">Pedido</th>
+                                                    <th style="padding: 0.5rem; text-align: right;">Total</th>
+                                                    <th style="padding: 0.5rem; text-align: center;">Estado</th>
+                                                </tr>
+                                            </thead>
+                                            <tbody>
+                                                ${ordersHtml || '<tr><td colspan="3" style="text-align: center; padding: 1rem; color: #9ca3af;">No hay pedidos</td></tr>'}
+                                            </tbody>
+                                        </table>
+                                    </div>
+                                    <div style="margin-top: 1rem; text-align: center;">
+                                        <a href="/api/reports/pdf/sales-day?date=${selectedDate}" target="_blank" 
+                                           style="display: inline-block; background-color: #8b5cf6; color: white; padding: 0.75rem 1.5rem; border-radius: 0.5rem; text-decoration: none; font-weight: 600;">
+                                            📄 Exportar PDF
+                                        </a>
+                                    </div>
+                                </div>
+                            `,
+                            width: '700px',
+                            confirmButtonText: 'Cerrar'
+                        });
+                    } else {
+                        Swal.fire('Error', data.error || 'No se pudo generar el reporte', 'error');
+                    }
+                });
+        }
+    });
+}
+
+function generateTopProductsReport() {
+    Swal.fire({
+        title: 'Productos Más Vendidos',
+        html: `
+            <div style="text-align: left; margin-top: 1rem;">
+                <div style="margin-bottom: 1rem;">
+                    <label style="display: block; margin-bottom: 0.5rem; font-weight: 600;">Fecha Inicio:</label>
+                    <input type="date" id="startDate" style="width: 100%; padding: 0.5rem; border: 1px solid #d1d5db; border-radius: 0.375rem;">
+                </div>
+                <div style="margin-bottom: 1rem;">
+                    <label style="display: block; margin-bottom: 0.5rem; font-weight: 600;">Fecha Fin:</label>
+                    <input type="date" id="endDate" style="width: 100%; padding: 0.5rem; border: 1px solid #d1d5db; border-radius: 0.375rem;">
+                </div>
+                <div>
+                    <label style="display: block; margin-bottom: 0.5rem; font-weight: 600;">Límite:</label>
+                    <input type="number" id="limit" value="10" min="1" max="50" style="width: 100%; padding: 0.5rem; border: 1px solid #d1d5db; border-radius: 0.375rem;">
+                </div>
+            </div>
+        `,
+        showCancelButton: true,
+        confirmButtonText: 'Generar Reporte',
+        cancelButtonText: 'Cancelar',
+        confirmButtonColor: '#6366f1',
+        preConfirm: () => {
+            const startDate = document.getElementById('startDate').value;
+            const endDate = document.getElementById('endDate').value;
+            const limit = document.getElementById('limit').value || 10;
+            return { startDate, endDate, limit };
+        }
+    }).then((result) => {
+        if (result.isConfirmed) {
+            const params = new URLSearchParams();
+            if (result.value.startDate) params.append('start_date', result.value.startDate);
+            if (result.value.endDate) params.append('end_date', result.value.endDate);
+            params.append('limit', result.value.limit);
+            
+            fetch(`/api/reports/top-products?${params.toString()}`)
+                .then(res => res.json())
+                .then(data => {
+                    if (data.success) {
+                        const productsHtml = data.products.map((prod, idx) => `
+                            <tr>
+                                <td style="font-weight: 600;">#${idx + 1}</td>
+                                <td>${prod.producto_nombre}</td>
+                                <td style="text-align: right;">${prod.total_vendido}</td>
+                                <td style="text-align: right; color: #10b981; font-weight: bold;">Q${parseFloat(prod.ingresos_totales).toFixed(2)}</td>
+                            </tr>
+                        `).join('');
+                        
+                        Swal.fire({
+                            title: '🏆 Productos Más Vendidos',
+                            html: `
+                                <div style="text-align: left; margin-top: 1rem;">
+                                    <table style="width: 100%; border-collapse: collapse; font-size: 0.875rem;">
+                                        <thead>
+                                            <tr style="background: #f9fafb; border-bottom: 2px solid #e5e7eb;">
+                                                <th style="padding: 0.5rem; text-align: center;">#</th>
+                                                <th style="padding: 0.5rem; text-align: left;">Producto</th>
+                                                <th style="padding: 0.5rem; text-align: right;">Cantidad</th>
+                                                <th style="padding: 0.5rem; text-align: right;">Ingresos</th>
+                                            </tr>
+                                        </thead>
+                                        <tbody>
+                                            ${productsHtml || '<tr><td colspan="4" style="text-align: center; padding: 1rem; color: #9ca3af;">No hay datos</td></tr>'}
+                                        </tbody>
+                                    </table>
+                                </div>
+                            `,
+                            width: '700px',
+                            showCancelButton: true,
+                            confirmButtonText: '📄 Exportar PDF',
+                            cancelButtonText: 'Cerrar',
+                            confirmButtonColor: '#8b5cf6'
+                        }).then((result) => {
+                            if (result.isConfirmed) {
+                                window.open(`/api/reports/pdf/sales-day?date=${result.value}`, '_blank');
+                            }
+                        });
+                    } else {
+                        Swal.fire('Error', data.error || 'No se pudo generar el reporte', 'error');
+                    }
+                });
+        }
+    });
+}
+
+function showSalesRangeForm() {
+    Swal.fire({
+        title: 'Reporte por Rango de Fechas',
+        html: `
+            <div style="text-align: left; margin-top: 1rem;">
+                <div style="margin-bottom: 1rem;">
+                    <label style="display: block; margin-bottom: 0.5rem; font-weight: 600;">Fecha Inicio:</label>
+                    <input type="date" id="rangeStartDate" required style="width: 100%; padding: 0.5rem; border: 1px solid #d1d5db; border-radius: 0.375rem;">
+                </div>
+                <div>
+                    <label style="display: block; margin-bottom: 0.5rem; font-weight: 600;">Fecha Fin:</label>
+                    <input type="date" id="rangeEndDate" required style="width: 100%; padding: 0.5rem; border: 1px solid #d1d5db; border-radius: 0.375rem;">
+                </div>
+            </div>
+        `,
+        showCancelButton: true,
+        confirmButtonText: 'Generar Reporte',
+        cancelButtonText: 'Cancelar',
+        confirmButtonColor: '#10b981',
+        preConfirm: () => {
+            const start = document.getElementById('rangeStartDate').value;
+            const end = document.getElementById('rangeEndDate').value;
+            if (!start || !end) {
+                Swal.showValidationMessage('Por favor completa ambas fechas');
+                return false;
+            }
+            if (start > end) {
+                Swal.showValidationMessage('La fecha inicio debe ser anterior a la fecha fin');
+                return false;
+            }
+            return { start, end };
+        }
+    }).then((result) => {
+        if (result.isConfirmed) {
+            fetch(`/api/reports/sales-range?start_date=${result.value.start}&end_date=${result.value.end}`)
+                .then(res => res.json())
+                .then(data => {
+                    if (data.success) {
+                        const summary = data.summary;
+                        const dailyHtml = data.daily_sales.map(day => `
+                            <tr>
+                                <td>${day.fecha}</td>
+                                <td style="text-align: right;">${day.pedidos}</td>
+                                <td style="text-align: right; color: #10b981; font-weight: bold;">Q${parseFloat(day.ventas).toFixed(2)}</td>
+                            </tr>
+                        `).join('');
+                        
+                        Swal.fire({
+                            title: `📅 Reporte ${data.start_date} al ${data.end_date}`,
+                            html: `
+                                <div style="text-align: left; margin-top: 1rem;">
+                                    <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 1rem; margin-bottom: 1rem;">
+                                        <div style="background: #f3f4f6; padding: 1rem; border-radius: 0.5rem;">
+                                            <div style="color: #6b7280; font-size: 0.875rem;">Total Pedidos</div>
+                                            <div style="font-size: 1.5rem; font-weight: bold; color: #1f2937;">${summary.total_pedidos}</div>
+                                        </div>
+                                        <div style="background: #f3f4f6; padding: 1rem; border-radius: 0.5rem;">
+                                            <div style="color: #6b7280; font-size: 0.875rem;">Ventas Totales</div>
+                                            <div style="font-size: 1.5rem; font-weight: bold; color: #10b981;">Q${parseFloat(summary.ventas_totales).toFixed(2)}</div>
+                                        </div>
+                                    </div>
+                                    <div style="max-height: 300px; overflow-y: auto;">
+                                        <table style="width: 100%; border-collapse: collapse; font-size: 0.875rem;">
+                                            <thead>
+                                                <tr style="background: #f9fafb; border-bottom: 2px solid #e5e7eb;">
+                                                    <th style="padding: 0.5rem; text-align: left;">Fecha</th>
+                                                    <th style="padding: 0.5rem; text-align: right;">Pedidos</th>
+                                                    <th style="padding: 0.5rem; text-align: right;">Ventas</th>
+                                                </tr>
+                                            </thead>
+                                            <tbody>
+                                                ${dailyHtml || '<tr><td colspan="3" style="text-align: center; padding: 1rem; color: #9ca3af;">No hay datos</td></tr>'}
+                                            </tbody>
+                                        </table>
+                                    </div>
+                                </div>
+                            `,
+                            width: '700px',
+                            showCancelButton: true,
+                            confirmButtonText: '📄 Exportar PDF',
+                            cancelButtonText: 'Cerrar',
+                            confirmButtonColor: '#8b5cf6'
+                        }).then((result) => {
+                            if (result.isConfirmed) {
+                                window.open(`/api/reports/pdf/sales-day?date=${result.value}`, '_blank');
+                            }
+                        });
+                    } else {
+                        Swal.fire('Error', data.error || 'No se pudo generar el reporte', 'error');
+                    }
+                });
+        }
+    });
+}
+
+function generateCategoriesReport() {
+    Swal.fire({
+        title: 'Reporte por Categorías',
+        html: `
+            <div style="text-align: left; margin-top: 1rem;">
+                <div style="margin-bottom: 1rem;">
+                    <label style="display: block; margin-bottom: 0.5rem; font-weight: 600;">Fecha Inicio (opcional):</label>
+                    <input type="date" id="catStartDate" style="width: 100%; padding: 0.5rem; border: 1px solid #d1d5db; border-radius: 0.375rem;">
+                </div>
+                <div>
+                    <label style="display: block; margin-bottom: 0.5rem; font-weight: 600;">Fecha Fin (opcional):</label>
+                    <input type="date" id="catEndDate" style="width: 100%; padding: 0.5rem; border: 1px solid #d1d5db; border-radius: 0.375rem;">
+                </div>
+            </div>
+        `,
+        showCancelButton: true,
+        confirmButtonText: 'Generar Reporte',
+        cancelButtonText: 'Cancelar',
+        confirmButtonColor: '#f59e0b',
+        preConfirm: () => {
+            return {
+                startDate: document.getElementById('catStartDate').value || null,
+                endDate: document.getElementById('catEndDate').value || null
+            };
+        }
+    }).then((result) => {
+        if (result.isConfirmed) {
+            const params = new URLSearchParams();
+            if (result.value.startDate) params.append('start_date', result.value.startDate);
+            if (result.value.endDate) params.append('end_date', result.value.endDate);
+            
+            fetch(`/api/reports/categories?${params.toString()}`)
+                .then(res => res.json())
+                .then(data => {
+                    if (data.success) {
+                        const categoriesHtml = data.categories.map(cat => `
+                            <tr>
+                                <td>${cat.categoria}</td>
+                                <td style="text-align: right;">${cat.unidades_vendidas}</td>
+                                <td style="text-align: right;">${cat.veces_pedida}</td>
+                                <td style="text-align: right; color: #10b981; font-weight: bold;">Q${parseFloat(cat.ingresos_totales).toFixed(2)}</td>
+                            </tr>
+                        `).join('');
+                        
+                        Swal.fire({
+                            title: '📦 Reporte por Categorías',
+                            html: `
+                                <div style="text-align: left; margin-top: 1rem;">
+                                    <table style="width: 100%; border-collapse: collapse; font-size: 0.875rem;">
+                                        <thead>
+                                            <tr style="background: #f9fafb; border-bottom: 2px solid #e5e7eb;">
+                                                <th style="padding: 0.5rem; text-align: left;">Categoría</th>
+                                                <th style="padding: 0.5rem; text-align: right;">Unidades</th>
+                                                <th style="padding: 0.5rem; text-align: right;">Veces Pedida</th>
+                                                <th style="padding: 0.5rem; text-align: right;">Ingresos</th>
+                                            </tr>
+                                        </thead>
+                                        <tbody>
+                                            ${categoriesHtml || '<tr><td colspan="4" style="text-align: center; padding: 1rem; color: #9ca3af;">No hay datos</td></tr>'}
+                                        </tbody>
+                                    </table>
+                                </div>
+                            `,
+                            width: '700px',
+                            showCancelButton: true,
+                            confirmButtonText: '📄 Exportar PDF',
+                            cancelButtonText: 'Cerrar',
+                            confirmButtonColor: '#8b5cf6'
+                        }).then((result) => {
+                            if (result.isConfirmed) {
+                                window.open(`/api/reports/pdf/sales-day?date=${result.value}`, '_blank');
+                            }
+                        });
+                    } else {
+                        Swal.fire('Error', data.error || 'No se pudo generar el reporte', 'error');
+                    }
+                });
+        }
+    });
+}
+</script>
+{% endblock %}
+

@@ -1,0 +1,120 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Login - Sistema de Pedidos</title>
+    
+    <!-- Bootstrap 5 CSS -->
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/css/bootstrap.min.css" rel="stylesheet">
+    <!-- Bootstrap Icons -->
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.1/font/bootstrap-icons.css">
+    <!-- Google Fonts -->
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+    
+    <style>
+        * {
+            font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+        }
+        
+        body {
+            background: linear-gradient(135deg, #047857 0%, #059669 100%);
+            min-height: 100vh;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+        
+        .login-card {
+            border-radius: 1rem;
+            box-shadow: 0 20px 40px rgba(0,0,0,0.2);
+            border: none;
+            overflow: hidden;
+        }
+        
+        .login-header {
+            background: linear-gradient(135deg, #047857 0%, #059669 100%);
+            color: white;
+            padding: 2rem;
+            text-align: center;
+        }
+        
+        .form-control:focus {
+            border-color: #047857;
+            box-shadow: 0 0 0 3px rgba(4, 120, 87, 0.1);
+        }
+        
+        .btn-primary {
+            background: linear-gradient(135deg, #047857 0%, #059669 100%);
+            border: none;
+            padding: 0.875rem;
+            font-weight: 600;
+        }
+        
+        .btn-primary:hover {
+            transform: translateY(-1px);
+            box-shadow: 0 4px 12px rgba(4, 120, 87, 0.3);
+        }
+        
+        .test-users .card {
+            transition: all 0.3s ease;
+        }
+        
+        .test-users .card:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 4px 8px rgba(0,0,0,0.1);
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="row justify-content-center">
+            <div class="col-md-5 col-lg-4">
+                <div class="card login-card">
+                    <div class="login-header">
+                        <div style="font-size: 4rem; margin-bottom: 1rem;">🌮</div>
+                        <h1 class="h3 mb-2 fw-bold">SAZÓN MEXICANO</h1>
+                        <p class="mb-0 opacity-75">Sistema de Pedidos</p>
+                    </div>
+                    
+                    <div class="card-body p-4">
+                        {% if error %}
+                        <div class="alert alert-danger d-flex align-items-center mb-4" role="alert">
+                            <i class="bi bi-exclamation-triangle-fill me-2"></i>
+                            <div>{{ error }}</div>
+                        </div>
+                        {% endif %}
+
+                        <form method="POST" action="/login" class="mb-4">
+                            <div class="mb-3">
+                                <label for="username" class="form-label fw-semibold">
+                                    <i class="bi bi-person"></i> Usuario
+                                </label>
+                                <input type="text" class="form-control form-control-lg" id="username" name="username" required autofocus
+                                       placeholder="Ingresa tu usuario">
+                            </div>
+
+                            <div class="mb-4">
+                                <label for="password" class="form-label fw-semibold">
+                                    <i class="bi bi-lock"></i> Contraseña
+                                </label>
+                                <input type="password" class="form-control form-control-lg" id="password" name="password" required
+                                       placeholder="Ingresa tu contraseña">
+                            </div>
+
+                            <button type="submit" class="btn btn-primary w-100 btn-lg">
+                                <i class="bi bi-box-arrow-in-right"></i> Iniciar Sesión
+                            </button>
+                        </form>
+
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+    
+    <!-- Bootstrap 5 JS Bundle -->
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/js/bootstrap.bundle.min.js"></script>
+</body>
+</html>
+

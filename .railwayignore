@@ -1,9 +1,0 @@
-.git
-.gitignore
-README.md
-docker-compose.yml
-.dockerignore
-.railwayignore
-*.md
-node_modules
-
