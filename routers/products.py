@@ -3,6 +3,8 @@ from fastapi.responses import JSONResponse
 from auth import get_current_user
 from database import get_db_connection
 from decimal import Decimal
+from datetime import datetime
+from utils import format_datetime_to_string
 import sys
 import os
 
@@ -18,6 +20,18 @@ def convert_decimals(obj):
         return {k: convert_decimals(v) for k, v in obj.items()}
     elif isinstance(obj, list):
         return [convert_decimals(item) for item in obj]
+    return obj
+
+def convert_for_json(obj):
+    """Convierte objetos Decimal y datetime a formatos JSON serializables"""
+    if isinstance(obj, datetime):
+        return format_datetime_to_string(obj)
+    elif isinstance(obj, Decimal):
+        return float(obj)
+    elif isinstance(obj, dict):
+        return {k: convert_for_json(v) for k, v in obj.items()}
+    elif isinstance(obj, list):
+        return [convert_for_json(item) for item in obj]
     return obj
 
 def require_admin(request: Request):
@@ -58,14 +72,8 @@ async def get_products_api(request: Request,
         cursor.execute(query, params)
         products = cursor.fetchall()
         
-        # Convertir datetime y Decimal
-        for product in products:
-            if product.get('created_at'):
-                product['created_at'] = product['created_at'].strftime('%Y-%m-%d %H:%M:%S') if hasattr(product['created_at'], 'strftime') else str(product['created_at'])
-            if product.get('precio'):
-                product['precio'] = float(product['precio']) if isinstance(product['precio'], Decimal) else product['precio']
-        
-        products = convert_decimals(products)
+        # Convertir datetime y Decimal usando la función helper
+        products = convert_for_json(products)
         cursor.close()
         conn.close()
         
@@ -91,13 +99,8 @@ async def get_product_api(request: Request, product_id: int):
         if not product:
             return JSONResponse({"success": False, "error": "Producto no encontrado"}, status_code=404)
         
-        # Convertir datetime y Decimal
-        if product.get('created_at'):
-            product['created_at'] = product['created_at'].strftime('%Y-%m-%d %H:%M:%S') if hasattr(product['created_at'], 'strftime') else str(product['created_at'])
-        if product.get('precio'):
-            product['precio'] = float(product['precio']) if isinstance(product['precio'], Decimal) else product['precio']
-        
-        product = convert_decimals(product)
+        # Convertir datetime y Decimal usando la función helper
+        product = convert_for_json(product)
         
         return JSONResponse({"success": True, "product": product})
     except Exception as e:
@@ -140,10 +143,10 @@ async def create_product_api(request: Request,
         cursor.close()
         conn.close()
         
-        # Convertir Decimal
-        if new_product.get('precio'):
-            new_product['precio'] = float(new_product['precio']) if isinstance(new_product['precio'], Decimal) else new_product['precio']
-        new_product = convert_decimals(new_product)
+        # Convertir datetime y Decimal para JSON serialization
+        if new_product.get('created_at'):
+            new_product['created_at'] = format_datetime_to_string(new_product['created_at'])
+        new_product = convert_for_json(new_product)
         
         return JSONResponse({"success": True, "message": "Producto creado exitosamente", "product": new_product})
     except Exception as e:
@@ -185,10 +188,10 @@ async def update_product_api(request: Request, product_id: int,
         cursor.close()
         conn.close()
         
-        # Convertir Decimal
-        if updated_product.get('precio'):
-            updated_product['precio'] = float(updated_product['precio']) if isinstance(updated_product['precio'], Decimal) else updated_product['precio']
-        updated_product = convert_decimals(updated_product)
+        # Convertir datetime y Decimal para JSON serialization
+        if updated_product.get('created_at'):
+            updated_product['created_at'] = format_datetime_to_string(updated_product['created_at'])
+        updated_product = convert_for_json(updated_product)
         
         return JSONResponse({"success": True, "message": "Producto actualizado exitosamente", "product": updated_product})
     except Exception as e:

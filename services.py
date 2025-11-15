@@ -2,6 +2,7 @@ from typing import List, Dict, Optional
 from database import get_db_connection
 from models import Producto, Pedido, PedidoItem, Descuento
 from datetime import datetime
+from utils import get_guatemala_time
 import random
 
 def get_products(active_only: bool = True) -> List[Dict]:
@@ -95,8 +96,8 @@ def create_order(cart: List[int], subtotal: float, discount_code: Optional[str] 
     cursor = conn.cursor()
     
     try:
-        # Generar número de pedido
-        numero_pedido = f"P{datetime.now().strftime('%Y%m%d')}-{str(random.randint(1, 9999)).zfill(4)}"
+        # Generar número de pedido usando hora de Guatemala
+        numero_pedido = f"P{get_guatemala_time().strftime('%Y%m%d')}-{str(random.randint(1, 9999)).zfill(4)}"
         
         # Crear pedido
         cursor.execute(
@@ -155,7 +156,7 @@ def update_order_status(order_id: int, new_status: str):
             cursor.execute("SELECT fecha_hora FROM pedidos WHERE id = %s", (order_id,))
             order_row = cursor.fetchone()
             if order_row and order_row[0]:
-                tiempo = int((datetime.now() - order_row[0]).total_seconds())
+                tiempo = int((get_guatemala_time() - order_row[0]).total_seconds())
                 cursor.execute(
                     "UPDATE pedidos SET estado = %s, tiempo_preparacion = %s WHERE id = %s",
                     (new_status, tiempo, order_id)

@@ -5,6 +5,7 @@ from auth import get_current_user
 from database import get_db_connection
 from datetime import datetime, timedelta
 from decimal import Decimal
+from utils import get_guatemala_time
 from io import BytesIO
 from reportlab.lib import colors
 from reportlab.lib.pagesizes import letter, A4
@@ -51,7 +52,7 @@ async def sales_day_report(request: Request, date: str = Query(None)):
         if date:
             query_date = datetime.strptime(date, '%Y-%m-%d').date()
         else:
-            query_date = datetime.now().date()
+            query_date = get_guatemala_time().date()
         
         # Ventas del día
         cursor.execute("""

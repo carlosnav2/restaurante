@@ -4,6 +4,7 @@ from fastapi.templating import Jinja2Templates
 from auth import get_current_user, get_password_hash
 from database import get_db_connection
 from decimal import Decimal
+from utils import format_datetime_to_string
 import sys
 import os
 
@@ -62,7 +63,7 @@ def get_all_users(search: str = None, role: str = None, active: str = None):
     # Convertir datetime a string para JSON
     for user in users:
         if user.get('created_at'):
-            user['created_at'] = user['created_at'].strftime('%Y-%m-%d %H:%M:%S') if hasattr(user['created_at'], 'strftime') else str(user['created_at'])
+            user['created_at'] = format_datetime_to_string(user['created_at'])
     
     users = convert_decimals(users)
     return users
@@ -77,7 +78,7 @@ def get_user_by_id(user_id: int):
     conn.close()
     if user:
         if user.get('created_at'):
-            user['created_at'] = user['created_at'].strftime('%Y-%m-%d %H:%M:%S') if hasattr(user['created_at'], 'strftime') else str(user['created_at'])
+            user['created_at'] = format_datetime_to_string(user['created_at'])
         user = convert_decimals(user)
     return user
 
